@@ -2,7 +2,7 @@ import multiprocessing, Queue, signal, sys, random, cv2
 import time
 from time import sleep
 from naoqi import ALModule, ALProxy, ALBroker
-#from ReactToTouch import *
+from ReactToTouch import *
 
 ip = "192.168.1.115"
 port = 9559
@@ -10,6 +10,7 @@ port = 9559
 
 # general variables
 duration = 20
+time_out = 0.2
 
 try:
     # proxies
@@ -53,39 +54,6 @@ def say(str):
     tts.say(str)
     print('saying: ',str)
 
-################################################################################
-# React to touch class
-################################################################################
-
-class ReactToTouch(ALModule):
-
-    def __init__(self, name):
-        try:
-            p = ALProxy(name)
-            p.exit()
-        except:
-            pass
-        ALModule.__init__(self,name)
-        self.name = name
-        self.parts = []
-
-        print("ReactToTouch now initiated")
-        memory.subscribeToEvent("TouchChanged", self.name, "onTouched")
-
-    def onTouched(self, strVarName, value):
-        print 'touched unsubscr: ', value
-        memory.unsubscribeToEvent("TouchChanged", self.name)
-        print 'touched bodyparts: ', value
-        tts.say("you touched me!")
-        touched_bodies = []
-        for p in value:
-            if p[1]:
-                touched_bodies.append(p[0])
-        self.parts = touched_bodies
-        print touched_bodies
-        # don't do something here with the touched bodyparts, you want to do this in the main and/or a behaviour thread!
-        # note that the touched parts will be replaced every time
-        memory.subscribeToEvent("TouchChanged", self.name, "onTouched")
 
 ################################################################################
 # Example process
@@ -104,8 +72,29 @@ def exampleProc(exampleVariable):
 
     print name, " Exiting"
 
+################################################################################
+# Marco Polo
+################################################################################
+def runMarcoPolo(queue):
+    print 'running marco polo'
+    tts.say("The rules are as follows")
+    tts.say("I call Marco")
+    tts.say("And you respond with Polo!")
 
+    # this is supposed to be the behavior process. This process will listen for certain events and perform certain
+    # behaviors, like calling Marco and waiting for you to respond with Polo. This needs implementation still.
+    wonMarcoPolo = False
+    i = 0
+    while True:
+        if wonMarcoPolo:
+            break
+        i += 1
+        if i >= 5:
+            wonMarcoPolo = True
+        queue.put(wonMarcoPolo)
+        sleep(1)
 
+    print 'exiting marco polo'
 
 ################################################################################
 # Main functions
@@ -114,7 +103,7 @@ def setup():
     global pythonBroker
 
     # add threads and thread variables here
-    global exampleProcess, exampleVariable
+    global exampleProcess, exampleVariable, mainQueue, marcoPolo
 
 
     # Set robot to default posture
@@ -126,44 +115,68 @@ def setup():
     # multithread variables
     manager = multiprocessing.Manager()
     exampleVariable = manager.Value('i', 0)
+    mainQueue = multiprocessing.Queue()
 
     # extra threads
     exampleProcess = multiprocessing.Process(name = "example-proc", target=exampleProc, args=(exampleVariable,))
-
+    marcoPolo = multiprocessing.Process(name="MarcoPolo-proc", target=runMarcoPolo, args=(mainQueue,))
 
 
 def main():
-    global pythonBroker
+
+    global pythonBroker, ReactToTouch
     # add threads and thread variables here
-    global exampleProcess, exampleVariable
+    global exampleProcess, exampleVariable, marcoPolo, mainQueue
 
     try:
         # start threads
+        setup()
         #exampleProcess.start()
-        #setup()
 
         # start timer
         start = time.time()
         end = time.time()
 
-
         pythonBroker = ALBroker("pythonBroker", "0.0.0.0", 9559, ip, port)
-        ReactToTouch = ReactToTouch("ReactToTouch")
+        ReactToTouch = ReactToTouch("ReactToTouch", memory)
 
         while end - start < duration:
 
             #print "Example variable is:" , exampleVariable.value
             if ReactToTouch.parts != []:
                 print 'touched bodyparts are: \n', ReactToTouch.parts
-                sleep(0.5)
-                ReactToTouch.parts = [] # make the list empty
-            else:
-                print 'no touch occurred'
+                parts = ReactToTouch.parts
+                ReactToTouch.parts = [] # make the list empty again
+                for part in parts:
+                    print 'current part is ', part
+                    if "Head" in part:
+                        print 'time for marco polo'
+                        # make a process for Marco Polo
+                        tts.say("lets play a game of Marco polo!")
+                        marcoPolo.start()
+
+                        while True:
+                            try:
+                                wonMP = mainQueue.get(True, time_out)
+                            except Queue.Empty:
+                                pass # do nothing
+                            else:
+                                if wonMP is True: # if you've won marcopolo, finish this part
+                                    break
+                        marcoPolo.join()
+                        tts.say('that was fun!')
+                        break # don't check other parts if you have already found a part
+                    elif "Hand" in part:
+                        # make a process for I Spy with my little Eye
+                        tts.say("you chose to play I spy with my little eye")
+                        tts.say("lets have some fun!")
+                        break # don't check other parts if you have already found a part
 
             # update time
             sleep(0.2)
             end = time.time()
 
+        ReactToTouch.unsubscribe()
         say("This was my presentation")
 
     except KeyboardInterrupt:
