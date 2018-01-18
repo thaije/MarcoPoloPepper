@@ -90,7 +90,7 @@ def setup():
     exampleVariable = manager.Value('i', 0)
 
     # extra threads
-    exampleProcess = multiprocessing.Process(name = "volume-measurement-proc", target=exampleProc, args=(exampleVariable,))
+    exampleProcess = multiprocessing.Process(name = "example-proc", target=exampleProc, args=(exampleVariable,))
 
 
 

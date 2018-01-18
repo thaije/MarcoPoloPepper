@@ -22,7 +22,7 @@ import sys
 import camera
 from naoqi import ALModule, ALProxy, ALBroker
 
-ip = "192.168.1.137"
+ip = "192.168.1.115"
 port = 9559
 
 # general variables
