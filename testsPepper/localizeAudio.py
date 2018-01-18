@@ -17,7 +17,7 @@ tts = ALProxy("ALSoundLocalization", ip, port)
 postureProxy = ALProxy("ALRobotPosture", ip ,port )
 motionProxy = ALProxy("ALMotion", ip ,port )
 
-
+azimuth = 0
 
 class SoundLocalization(ALModule):
 
@@ -39,23 +39,32 @@ class SoundLocalization(ALModule):
         try:
             memory.unsubscribeToEvent("ALSoundLocalization/SoundLocated", "SoundLocalization")
 
-            # print parameter
-            # print value
-            # print "Sound!"
+            # front el -0.3 (-17degrees)
+            # top el -1.45 (should be 1.57 degrees)
+            #
+            # left az 1.25 (should be 1.57)
+            # right az -1.25 (right should be -1.57)
+            # behind az 3 (should be 3.14)
+            # right az 4.5 (should be 4.7)
 
+            global azimuth
+            azimuth = value[1][0]
             print "Azimuth ", value[1][0] , " elevation ", value[1][1] , " with energy:", value[1][3] , " with condifence", value[1][2]
 
             memory.subscribeToEvent("ALSoundLocalization/SoundLocated", "SoundLocalization", "onLocalize")
         except:
             print "Oops error"
 
-# front el -0.3 (-17degrees)
-# top el -1.45 (should be 1.57 degrees)
-#
-# left az 1.25 (should be 1.57)
-# right az -1.25 (right should be -1.57)
-# behind az 3 (should be 3.14)
-# right az 4.5 (should be 4.7)
+
+
+def azimuthToRotate(azimu):
+    print "rotate with azimuth ", azimu
+    motionProxy.moveTo(0, 0, azimu)
+
+
+
+
+
 
 if __name__ == "__main__":
     pythonBroker = ALBroker("pythonBroker", "0.0.0.0", 9559, ip, port)
@@ -63,10 +72,11 @@ if __name__ == "__main__":
 
     postureProxy.goToPosture("Stand", 0.6667)
 
-
     try:
         while True:
-            time.sleep(1)
+            time.sleep(2)
+            # print azimuth
+            azimuthToRotate(azimuth)
 
     except KeyboardInterrupt:
         print "Interrupted by user, shutting down"

@@ -14,6 +14,9 @@ port = 9559
 memory = ALProxy("ALMemory", ip, port)
 tts = ALProxy("ALTextToSpeech", ip, port)
 
+ReactToTouch = False
+
+
 class ReactToTouch(ALModule):
 
     def __init__(self, name):
@@ -54,8 +57,11 @@ class ReactToTouch(ALModule):
         print sentence
         # self.tts.say(sentence)
 
-if __name__ == "__main__":
+def main():
+    global ReactToTouch
+
     pythonBroker = ALBroker("pythonBroker", "0.0.0.0", 9559, ip, port)
+    
     ReactToTouch = ReactToTouch("ReactToTouch")
     try:
         while True:
@@ -65,3 +71,6 @@ if __name__ == "__main__":
         print "Interrupted by user, shutting down"
         pythonBroker.shutdown()
         sys.exit(0)
+
+if __name__ == "__main__":
+    main()
