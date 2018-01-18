@@ -2,13 +2,14 @@ import multiprocessing, Queue, signal, sys, random, math, cv2
 from time import time, sleep
 from naoqi import ALModule, ALProxy, ALBroker
 
+from SoundLocalization import SoundLocalization
+
 ip = "192.168.1.115"
 port = 9559
 
 
 # general variables
-duration = 20
-
+duration = 60
 
 # proxies
 postureProxy = ALProxy("ALRobotPosture", ip ,port )
@@ -52,55 +53,25 @@ def rotateToVoice(azimu):
     motionProxy.moveTo(0, 0, azimu)
 
 
-################################################################################
-# Sound localization
-################################################################################
-class SoundLocalization(ALModule):
-
-    def __init__(self, name, azimuth):
-        try:
-            p = ALProxy(name)
-            p.exit()
-        except:
-            pass
-        ALModule.__init__(self,name)
-        self.tts = ALProxy("ALTextToSpeech")
-        self.name = name
-        self.azimuth = azimuth
-        memory.subscribeToEvent("ALSoundLocalization/SoundLocated", name, "onLocalize")
-
-    def onLocalize(self, parameter, value):
-        try:
-            memory.unsubscribeToEvent("ALSoundLocalization/SoundLocated", "SoundLocalization")
-
-            # front el -0.3 (-17degrees)
-            # top el -1.45 (should be 1.57 degrees)
-            #
-            # left az 1.25 (should be 1.57)
-            # right az -1.25 (right should be -1.57)
-            # behind az 3 (should be 3.14)
-            # right az 4.5 (should be 4.7)
-
-            self.azimuth.value = value[1][0]
-            print "Azimuth ", value[1][0] , " elevation ", value[1][1] , " with energy:", value[1][3] , " with condifence", value[1][2]
-
-            memory.subscribeToEvent("ALSoundLocalization/SoundLocated", "SoundLocalization", "onLocalize")
-        except:
-            print "Oops error"
 
 
 ################################################################################
 # Sound localization process
 ################################################################################
 def marcoPoloProc(azimuth):
+    pythonBroker = ALBroker("pythonBroker","0.0.0.0", 9600, ip, port)
+    global SoundLocalization
+
     name = multiprocessing.current_process().name
     print name, " Starting"
 
-    SoundLocalization = SoundLocalization("SoundLocalization", azimuth.value)
+    SoundLocalization = SoundLocalization("SoundLocalization", memory)
 
     try:
         while True:
-            time.sleep(0.2)
+            sleep(0.2)
+            print "Azimuth:", SoundLocalization.azimuth
+            azimuth.value = SoundLocalization.azimuth
             # azimuthToRotate(azimuth)
     except:
         print "Error in process ", name
@@ -199,9 +170,10 @@ def main():
 
             print "Azimuth variable is:" , azimuth.value
 
+            rotateToVoice(azimuth.value)
 
             # update time
-            sleep(0.2)
+            sleep(1.0)
             end = time()
 
         say("This was my presentation")
