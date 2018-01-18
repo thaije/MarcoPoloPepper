@@ -11,6 +11,7 @@ motionProxy = naoqi.ALProxy("ALMotion", ip ,port )
 postureProxy.goToPosture("Stand", 0.8)
 # StandInit?
 
+
 # X = forward speed
 # forward = 1.0, backward = -1.0
 X = 0.5
@@ -19,8 +20,7 @@ X = 0.5
 # 1.0 = counter-clockwise, -1.0 = clockwise
 Y = 0
 
-# Theta = Rotation speed
-# 1.0 = counter-clockwise, -1.0 counter-clockwise
+# Theta = Rotation speed = # 1.0 = counter-clockwise, -1.0 clockwise
 Theta = 0.0
 
 MotionProxy.moveToward(X, Y, Theta)

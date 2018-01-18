@@ -8,7 +8,7 @@ from naoqi import ALBroker
 
 #ReactToTouch = None
 
-ip = "192.168.1.103"
+ip = "192.168.1.115"
 port = 9559
 
 memory = ALProxy("ALMemory", ip, port)
