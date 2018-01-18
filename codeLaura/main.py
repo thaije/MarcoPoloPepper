@@ -7,7 +7,7 @@ import random
 import naoqi
 from naoqi import ALProxy, ALBroker
 
-ip = "192.168.1.143"
+ip = "192.168.1.115"
 port = 9559
 
 try:
@@ -144,7 +144,7 @@ def writer3(queue):
         print 'waiting for audio'
         time.sleep(1)
 
-def reader(queue1, queue2):
+def reader(queue1, queue2, queue3):
     # process that reads from two queues and decides on intensity and color of LED
     # blue ball in sight: blue light
     # blue ball out of sight: red light
@@ -164,6 +164,7 @@ def reader(queue1, queue2):
     print name, 'Starting'
     msg1 = None
     msg2 = None
+    msg3 = None
     while True:
         try:
             msg1 = queue1.get(True,time_out)
@@ -191,6 +192,17 @@ def reader(queue1, queue2):
             elif msg2 == "high volume":
                 intensity = 1.0
                 print "intensity is now high"
+        try:
+            msg3 = queue3.get(True, time_out)
+        except Queue.Empty:
+            print name, 'no message in queue3'
+        else:
+            print 'from queue3 received ', msg3
+            if msg3 == "low volume":
+                intensity = 0.35
+            elif msg3 == "high volume":
+                intensity = 1.0
+                print "intensity is now high"
 
         print "intensity ", intensity, " red ", red, " blue ", blue
         leds.fadeRGB(ledname, red, green, blue, duration)
@@ -204,33 +216,34 @@ q3 = multiprocessing.Queue()
 w1 = multiprocessing.Process(name='writer1-proc', target=writer1, args=(q1,))
 w2 = multiprocessing.Process(name='writer2-proc', target=writer2, args=(q2,))
 w3 = multiprocessing.Process(name='writer3-proc', target=writer3, args=(q3,))
-rdr = multiprocessing.Process(name='reader-proc', target=reader, args=(q1, q2,))
+rdr = multiprocessing.Process(name='reader-proc', target=reader, args=(q1, q2, q3,))
 
 if __name__ == '__main__':
     print 'starting'
     try:
-        w1.start()
-        w2.start()
-        w3.start()
-        rdr.start()
-
-        t=1
-        while t<30: # during 30 seconds
-            time.sleep(1)
-            t+=1
-
-        print 'reached timelimit, terminating process'
-        w1.terminate()
-        w2.terminate()
-        w3.terminate()
-        rdr.terminate()
+        # w1.start()
+        # w2.start()
+        # w3.start()
+        # rdr.start()
+        #
+        # t=1
+        # while t<30: # during 30 seconds
+        #     time.sleep(1)
+        #     t+=1
+        #
+        # print 'reached timelimit, terminating process'
+        # w1.terminate()
+        # w2.terminate()
+        # w3.terminate()
+        # rdr.terminate()
+        tts.say("hi tjalling")
 
     except KeyboardInterrupt:
         print "Caught keyboard interrupt, terminating processes"
-        w1.terminate()
-        w2.terminate()
-        w3.terminate()
-        rdr.terminate()
+        # w1.terminate()
+        # w2.terminate()
+        # w3.terminate()
+        # rdr.terminate()
 
     videoProxy.unsubscribe(cam)
     pythonBroker.shutdown()
