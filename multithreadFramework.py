@@ -1,6 +1,8 @@
 import multiprocessing, Queue, signal, sys, random, cv2
-from time import time, sleep
+import time
+from time import sleep
 from naoqi import ALModule, ALProxy, ALBroker
+#from ReactToTouch import *
 
 ip = "192.168.1.115"
 port = 9559
@@ -9,14 +11,19 @@ port = 9559
 # general variables
 duration = 20
 
-
-# proxies
-postureProxy = ALProxy("ALRobotPosture", ip ,port )
-motionProxy = ALProxy("ALMotion", ip ,port )
-tts = ALProxy("ALTextToSpeech", ip , port )
-memory = ALProxy("ALMemory", ip, port)
-LED = ALProxy("ALLeds", ip, port)
-pythonBroker = False
+try:
+    # proxies
+    postureProxy = ALProxy("ALRobotPosture", ip ,port )
+    motionProxy = ALProxy("ALMotion", ip ,port )
+    touchProxy = ALProxy("ALTouch", ip, port)
+    tts = ALProxy("ALTextToSpeech", ip , port )
+    memory = ALProxy("ALMemory", ip, port)
+    LED = ALProxy("ALLeds", ip, port)
+    pythonBroker = False
+except Exception, e:
+    print "could not create all proxies"
+    print "error was ", e
+    sys.exit(1)
 
 # disable ALAutonomousMoves bug
 am = ALProxy("ALAutonomousMoves", ip ,port )
@@ -44,9 +51,41 @@ def checkProxyDuplicates(name):
 
 def say(str):
     tts.say(str)
-    print(str)
+    print('saying: ',str)
 
+################################################################################
+# React to touch class
+################################################################################
 
+class ReactToTouch(ALModule):
+
+    def __init__(self, name):
+        try:
+            p = ALProxy(name)
+            p.exit()
+        except:
+            pass
+        ALModule.__init__(self,name)
+        self.name = name
+        self.parts = []
+
+        print("ReactToTouch now initiated")
+        memory.subscribeToEvent("TouchChanged", self.name, "onTouched")
+
+    def onTouched(self, strVarName, value):
+        print 'touched unsubscr: ', value
+        memory.unsubscribeToEvent("TouchChanged", self.name)
+        print 'touched bodyparts: ', value
+        tts.say("you touched me!")
+        touched_bodies = []
+        for p in value:
+            if p[1]:
+                touched_bodies.append(p[0])
+        self.parts = touched_bodies
+        print touched_bodies
+        # don't do something here with the touched bodyparts, you want to do this in the main and/or a behaviour thread!
+        # note that the touched parts will be replaced every time
+        memory.subscribeToEvent("TouchChanged", self.name, "onTouched")
 
 ################################################################################
 # Example process
@@ -79,7 +118,6 @@ def setup():
 
 
     # Set robot to default posture
-    motionProxy.setStiffnesses("Head", 0.8)
     postureProxy.goToPosture("Stand", 0.6667)
     pythonBroker = ALBroker("pythonBroker","0.0.0.0", 9600, ip, port)
 
@@ -99,24 +137,32 @@ def main():
     # add threads and thread variables here
     global exampleProcess, exampleVariable
 
-    setup()
-
-    # start timer
-    start = time()
-    end = time()
     try:
         # start threads
-        exampleProcess.start()
+        #exampleProcess.start()
+        #setup()
 
+        # start timer
+        start = time.time()
+        end = time.time()
+
+
+        pythonBroker = ALBroker("pythonBroker", "0.0.0.0", 9559, ip, port)
+        ReactToTouch = ReactToTouch("ReactToTouch")
 
         while end - start < duration:
 
-            print "Example variable is:" , exampleVariable.value
-
+            #print "Example variable is:" , exampleVariable.value
+            if ReactToTouch.parts != []:
+                print 'touched bodyparts are: \n', ReactToTouch.parts
+                sleep(0.5)
+                ReactToTouch.parts = [] # make the list empty
+            else:
+                print 'no touch occurred'
 
             # update time
             sleep(0.2)
-            end = time()
+            end = time.time()
 
         say("This was my presentation")
 
@@ -130,7 +176,7 @@ def main():
         postureProxy.goToPosture("Crouch", 0.6667)
         motionProxy.rest()
         # stop threads
-        exampleProcess.terminate()
+        #exampleProcess.terminate()
         sys.exit(0)
 
 
