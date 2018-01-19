@@ -78,6 +78,7 @@ def exampleProc(exampleVariable):
 def runMarcoPolo(queue):
     print 'running marco polo'
     tts.say("The rules are as follows")
+    tts.say("First you hide somewhere in the room. I am still learning so not too difficult please..")
     tts.say("I call Marco")
     tts.say("And you respond with Polo!")
 
@@ -168,7 +169,7 @@ def main():
                         break # don't check other parts if you have already found a part
                     elif "Hand" in part:
                         # make a process for I Spy with my little Eye
-                        tts.say("you chose to play I spy with my little eye")
+                        tts.say("you choose to play I spy with my little eye")
                         tts.say("lets have some fun!")
                         break # don't check other parts if you have already found a part
 

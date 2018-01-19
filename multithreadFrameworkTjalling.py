@@ -3,6 +3,7 @@ from time import time, sleep
 from naoqi import ALModule, ALProxy, ALBroker
 
 from SoundLocalization import SoundLocalization
+from wordSpotting import SpeechRecognition
 
 ip = "192.168.1.115"
 port = 9559
@@ -28,6 +29,7 @@ am.setBackgroundStrategy("none")
 # multithread variables
 exampleVariable = False
 azimuth = False
+exitProcess = False
 
 # threads
 exampleProcess = False
@@ -55,62 +57,9 @@ def rotateToVoice(azimu):
 
 
 ################################################################################
-# SpeechRecognition
-################################################################################
-class SpeechRecognition(ALModule):
-
-    def __init__(self, name, memory):
-        try:
-            p = ALProxy(name)
-            p.exit()
-        except:
-            pass
-
-        ALModule.__init__(self, name)
-        self.response = False
-        self.value = []
-        self.name = name
-        self.wordlist = []
-        self.wordspotting = False
-        self.memory = memory
-        self.recognizedWord = False
-        self.spr = ALProxy("ALSpeechRecognition")
-        print "Setting up word spotting"
-
-
-    def getSpeech(self, wordlist, wordspotting):
-        self.response = False
-        self.value = []
-        self.wordlist = wordlist
-        self.wordspotting = wordspotting
-
-        print "Set get speech"
-
-        self.spr.setVocabulary(self.wordlist, self.wordspotting)
-        self.memory.subscribeToEvent("WordRecognized", self.name, "onDetect")
-
-    def onDetect(self, keyname, value, subscriber_name):
-        self.memory.unsubscribeToEvent("WordRecognized", self.name)
-        self.spr.pause(True)
-
-        self.response = True
-        self.value = value
-
-        self.recognizedWord = value[0]
-        print "Detected in word spotting", value[0]
-
-        self.getSpeech(self.wordlist, self.wordspotting)
-
-    def stop(self):
-        self.memory.unsubscribeToEvent("WordRecognized", self.name)
-        self.spr.pause(True)
-
-
-
-################################################################################
 # Marco Polo process
 ################################################################################
-def marcoPoloProc(azimuth):
+def marcoPoloProc(azimuth, exitProcess):
     global SoundLocalization, Speecher
 
     pythonBroker = ALBroker("pythonBroker","0.0.0.0", 9600, ip, port)
@@ -121,23 +70,26 @@ def marcoPoloProc(azimuth):
     nextAzimuth = 0
     waitForPolo = 0
 
-    # SoundLocalization = SoundLocalization("SoundLocalization", memory)
+    SoundLocalization = SoundLocalization("SoundLocalization", memory)
     Speecher = SpeechRecognition("Speecher", memory)
     Speecher.getSpeech(["stop", "marco", "polo"], True)
 
     try:
-        while True:
-            print "Recognized word:"  , Speecher.recognizedWord
-
+        while not exitProcess.value:
+            # test speech recognition
+            # print "Recognized word:"  , Speecher.recognizedWord
             # if Speecher.recognizedWord != False:
             #     word = Speecher.recognizedWord
             #     Speecher.recognizedWord = False
             #     say("Did you say" + word)
+            # sleep(0.1)
 
             # Get a reply from the other person
-            getPolo = waitForPolo
+            getPolo = waitForPolo(Speecher)
             while not getPolo:
-                getPolo = waitForPolo
+                getPolo = waitForPolo(Speecher)
+
+            print "I heard Polo"
 
             # Save the location of the speaker, and rotate to them
             print "Azimuth of speaker is:" + nextAzimuth
@@ -147,15 +99,15 @@ def marcoPoloProc(azimuth):
     # except:
     except Exception, e:
         print "Unexpected error:", sys.exc_info()[0] , ": ", str(e)
-        Speecher.stop()
-        print "Error in process ", name
         pass
+    finally:
+        print name, " Exiting"
+        Speecher.stop()
 
-    print name, " Exiting"
 
 
 # Say Marco, and wait for max 4 seconds for a Polo reply from the other speaker
-def waitForPolo():
+def waitForPolo(Speecher):
     waitForPolo = 0
 
     say("Marco?")
@@ -166,11 +118,12 @@ def waitForPolo():
     # Return if
     while Speecher.recognizedWord != "polo":
         # if we are waiting for 4 seconds or longer, return False
+        print "No polo? let's retry"
         if waitForPolo >= 4:
             return False
 
         sleep(0.5)
-        waitForPolo(0.5)
+        waitForPolo += 0.5
         word = Speecher.recognizedWord
         Speecher.recognizedWord = False
 
@@ -206,30 +159,31 @@ def setup():
     global pythonBroker
 
     # add threads and thread variables here
-    global exampleProcess, exampleVariable, marcoPoloProcess, azimuth
+    global exampleProcess, exampleVariable, marcoPoloProcess, azimuth, exitProcess
 
 
     # Set robot to default posture
     motionProxy.setStiffnesses("Head", 0.8)
-    postureProxy.goToPosture("Stand", 0.6667)
+    # postureProxy.goToPosture("Stand", 0.6667)
     pythonBroker = ALBroker("pythonBroker","0.0.0.0", 9600, ip, port)
 
     say("Initializing threads")
 
     # multithread variables
     manager = multiprocessing.Manager()
+    exitProcess = manager.Value('i', False)
     exampleVariable = manager.Value('i', 0)
     azimuth = manager.Value('i', 0)
 
     # extra threads
     exampleProcess = multiprocessing.Process(name = "example-proc", target=exampleProc, args=(exampleVariable,))
-    marcoPoloProcess = multiprocessing.Process(name = "marco-polo-proc", target=marcoPoloProc, args=(azimuth,))
+    marcoPoloProcess = multiprocessing.Process(name = "marco-polo-proc", target=marcoPoloProc, args=(azimuth,exitProcess,))
 
 
 def main():
     global pythonBroker
     # add threads and thread variables here
-    global exampleProcess, exampleVariable, marcoPoloProcess, azimuth
+    global exampleProcess, exampleVariable, marcoPoloProcess, azimuth, exitProcess
 
     setup()
 
@@ -263,12 +217,15 @@ def main():
 
         while end - start < duration:
 
+            # print "Exit val main:", exitProcess.value
+
+
             # print "Azimuth variable is:" , azimuth.value
 
             # rotateToVoice(azimuth.value)
 
             # update time
-            sleep(1.0)
+            sleep(0.5)
             end = time()
 
         say("This was my presentation")
@@ -279,8 +236,10 @@ def main():
         print "Unexpected error:", sys.exc_info()[0] , ": ", str(e)
     finally:
         say("Shutting down")
+        exitProcess.value = True
+        sleep(1.0)
         # rest
-        postureProxy.goToPosture("Crouch", 0.6667)
+        # postureProxy.goToPosture("Crouch", 0.6667)
         motionProxy.rest()
         # stop threads
         exampleProcess.terminate()
