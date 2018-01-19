@@ -45,7 +45,7 @@ def checkProxyDuplicates(name):
         pass
 
 def say(str):
-    tts.say(str)
+    # tts.say(str)
     print(str)
 
 def rotateToVoice(azimu):
@@ -54,33 +54,128 @@ def rotateToVoice(azimu):
 
 
 
+################################################################################
+# SpeechRecognition
+################################################################################
+class SpeechRecognition(ALModule):
+
+    def __init__(self, name, memory):
+        try:
+            p = ALProxy(name)
+            p.exit()
+        except:
+            pass
+
+        ALModule.__init__(self, name)
+        self.response = False
+        self.value = []
+        self.name = name
+        self.wordlist = []
+        self.wordspotting = False
+        self.memory = memory
+        self.recognizedWord = False
+        self.spr = ALProxy("ALSpeechRecognition")
+        print "Setting up word spotting"
+
+
+    def getSpeech(self, wordlist, wordspotting):
+        self.response = False
+        self.value = []
+        self.wordlist = wordlist
+        self.wordspotting = wordspotting
+
+        print "Set get speech"
+
+        self.spr.setVocabulary(self.wordlist, self.wordspotting)
+        self.memory.subscribeToEvent("WordRecognized", self.name, "onDetect")
+
+    def onDetect(self, keyname, value, subscriber_name):
+        self.memory.unsubscribeToEvent("WordRecognized", self.name)
+        self.spr.pause(True)
+
+        self.response = True
+        self.value = value
+
+        self.recognizedWord = value[0]
+        print "Detected in word spotting", value[0]
+
+        self.getSpeech(self.wordlist, self.wordspotting)
+
+    def stop(self):
+        self.memory.unsubscribeToEvent("WordRecognized", self.name)
+        self.spr.pause(True)
+
+
 
 ################################################################################
-# Sound localization process
+# Marco Polo process
 ################################################################################
 def marcoPoloProc(azimuth):
+    global SoundLocalization, Speecher
+
     pythonBroker = ALBroker("pythonBroker","0.0.0.0", 9600, ip, port)
-    global SoundLocalization
 
     name = multiprocessing.current_process().name
     print name, " Starting"
 
-    SoundLocalization = SoundLocalization("SoundLocalization", memory)
+    nextAzimuth = 0
+    waitForPolo = 0
+
+    # SoundLocalization = SoundLocalization("SoundLocalization", memory)
+    Speecher = SpeechRecognition("Speecher", memory)
+    Speecher.getSpeech(["stop", "marco", "polo"], True)
 
     try:
         while True:
-            sleep(0.2)
-            print "Azimuth:", SoundLocalization.azimuth
-            azimuth.value = SoundLocalization.azimuth
-            # azimuthToRotate(azimuth)
-    except:
+            print "Recognized word:"  , Speecher.recognizedWord
+
+            # if Speecher.recognizedWord != False:
+            #     word = Speecher.recognizedWord
+            #     Speecher.recognizedWord = False
+            #     say("Did you say" + word)
+
+            # Get a reply from the other person
+            getPolo = waitForPolo
+            while not getPolo:
+                getPolo = waitForPolo
+
+            # Save the location of the speaker, and rotate to them
+            print "Azimuth of speaker is:" + nextAzimuth
+            nextAzimuth = SoundLocalization.azimuth
+            azimuthToRotate(nextAzimuth)
+
+    # except:
+    except Exception, e:
+        print "Unexpected error:", sys.exc_info()[0] , ": ", str(e)
+        Speecher.stop()
         print "Error in process ", name
         pass
 
     print name, " Exiting"
 
 
+# Say Marco, and wait for max 4 seconds for a Polo reply from the other speaker
+def waitForPolo():
+    waitForPolo = 0
 
+    say("Marco?")
+
+    sleep(0.5)
+    waitForPolo += 0.5
+
+    # Return if
+    while Speecher.recognizedWord != "polo":
+        # if we are waiting for 4 seconds or longer, return False
+        if waitForPolo >= 4:
+            return False
+
+        sleep(0.5)
+        waitForPolo(0.5)
+        word = Speecher.recognizedWord
+        Speecher.recognizedWord = False
+
+    # Return true of we heard Polo
+    return True
 
 
 
@@ -168,9 +263,9 @@ def main():
 
         while end - start < duration:
 
-            print "Azimuth variable is:" , azimuth.value
+            # print "Azimuth variable is:" , azimuth.value
 
-            rotateToVoice(azimuth.value)
+            # rotateToVoice(azimuth.value)
 
             # update time
             sleep(1.0)

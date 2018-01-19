@@ -61,6 +61,8 @@ class SpeechRecognition(ALModule):
         self.spr.pause(True)
 
 if __name__ == "__main__":
+    pythonBroker = ALBroker("pythonBroker", "0.0.0.0", 9559, ip, port)
+
 
     # fucks up the asr module, better to restart
     asr = ALProxy("ALSpeechRecognition", ip, port)
@@ -68,7 +70,7 @@ if __name__ == "__main__":
     #
     # pythonBroker = ALBroker("pythonBroker","0.0.0.0", 9600, ip, port)
     Speecher = SpeechRecognition("Speecher")
-    Speecher.getSpeech(["left", "right", "stop", "marco", "polo"], True)
+    Speecher.getSpeech(["stop", "marco", "polo"], True)
 
     try:
         while True:
