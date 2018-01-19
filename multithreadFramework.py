@@ -1,6 +1,8 @@
 import multiprocessing, Queue, signal, sys, random, cv2
 import time
+import camera
 from time import sleep
+import numpy as np
 from naoqi import ALModule, ALProxy, ALBroker
 from ReactToTouch import *
 
@@ -73,6 +75,73 @@ def exampleProc(exampleVariable):
     print name, " Exiting"
 
 ################################################################################
+# Detecting Balls Processes
+################################################################################
+# set balldetection variables
+ballDetected = False
+ballDetectionProcess = False
+# camera variables
+resolution = 1
+resolutionX = 320
+resolutionY = 240
+ballThreshold = 35
+foundBall = False
+videoProxy = False
+cam = False
+# Try to center the ball (with a certain threshold)
+def centerOnBall(ballCoords, ballLocation):
+    x = ballCoords[0]
+    y = ballCoords[1]
+
+    # -1=not found, 0=centered, 1=top, 2=right, 3=bottom, 4=left
+    if x > (resolutionX/2 + ballThreshold):
+        ballLocation.value = "right"
+        # look("right")
+    elif x < (resolutionX/2 - ballThreshold):
+        ballLocation.value = "left"
+        # look("left")
+    elif y > (resolutionY/2 + ballThreshold):
+        ballLocation.value = "down"
+        # look("down")
+    elif y < (resolutionY/2 - ballThreshold):
+        ballLocation.value = "up"
+    else:
+        ballLocation.value = "centered"
+        # look("up")
+
+def detectBallProcess(ballLocation, ballLocated, colour):
+    name = multiprocessing.current_process().name
+    print name, " Starting"
+
+    # setup camera stream
+    videoProxy, cam = camera.setupCamera(ip, port)
+
+    try:
+        while True:
+            # get and process a camera frame
+            image = camera.getFrame(videoProxy, cam)
+            if image is not False:
+                # Check if we can find a ball, and point the head towards it if so
+                ballDet = camera.findBall(image)
+
+                if ballDet != False:
+                    ballLocated.value = True
+                    centerOnBall(ballDet, ballLocation)
+                    print "Ball detected"
+                else:
+                    ballLocated.value = False
+                    print "No ball detected"
+
+                if cv2.waitKey(33) == 27:
+                    videoProxy.unsubscribe(cam)
+                    break
+            sleep(0.2)
+    except:
+        videoProxy.unsubscribe(cam)
+    videoProxy.unsubscribe(cam)
+    print name, " Exiting"
+
+################################################################################
 # Marco Polo
 ################################################################################
 def runMarcoPolo(queue):
@@ -98,6 +167,66 @@ def runMarcoPolo(queue):
     print 'exiting marco polo'
 
 ################################################################################
+# I Spy With My Little Eye
+################################################################################
+# Choose the players. ...
+# Select the first spy. ...
+# Pick an object. ...
+# Pick your first hint. ...
+# Provide the first hint. ...
+# Let each player guess. ...
+# Provide another hint if necessary. ...
+# Let the player who guesses correctly become the next spy.
+def runLittleSpy(ballLocation, ballLocated):
+    tts.say("We are playing I spy with my little eye")
+    tts.say("These are the rules")
+    tts.say("You will place several balls in the room")
+    tts.say("You tell me the colour of the ball you picked")
+    tts.say("Then I will try to find the ball you picked")
+    tts.say("When I pick the wrong ball, you say WRONG!")
+    tts.say("When I have found the right ball, you say CORRECT!")
+    tts.say("We will play this game for three rounds.")
+    tts.say("I hope you are ready!")
+    sleep(1)
+
+    # decide on the colours of the balls
+    ballColours = ["pink" "red" "blue" "yellow" "orange" "green" "white" "purple"]
+
+    for i in range(0,1): # every round do
+        tts.say("pick a ball")
+        ballColourDecided = False
+        ballColour = ""
+        # decide on the ballcolour to find!
+        while not ballColourDecided:
+            sleep(0.5)
+            # TODO listen for the ball-colour
+            ballColour = "blue" # TODO make this: = wordspotting ballcolours or something
+            ballColourDecided = True
+
+        tts.say("I will look for a ball that is " + ballColour)
+
+        # look for the fucking ball, boyeah
+        ballDetectionProcess = multiprocessing.Process(name="ball-detection-proc", target=detectBallProcess,
+                                                       args=(ballLocation, ballLocated, ballColour,))
+        ballDetectionProcess.start()
+        while not ballLocated:
+            # TODO while you haven't found the ball, look and turn around and check for balls
+            sleep(0.1)
+
+        ballDetectionProcess.terminate()
+        tts.say("Is it that ball?")
+        # TODO also look at the ball
+
+        # listen for the answer and classify it as right or wrong
+        correct = True # start with False
+        # TODO listen for "correct" or "wrong"
+
+        if correct:
+            tts.say("yay!")
+            break
+
+
+################################################################################
 # Main functions
 ################################################################################
 def setup():
@@ -116,11 +245,14 @@ def setup():
     # multithread variables
     manager = multiprocessing.Manager()
     exampleVariable = manager.Value('i', 0)
+    ballLocation = manager.Value('i', -1)
+    ballLocated = manager.Value('i', False)
     mainQueue = multiprocessing.Queue()
 
     # extra threads
     exampleProcess = multiprocessing.Process(name = "example-proc", target=exampleProc, args=(exampleVariable,))
     marcoPolo = multiprocessing.Process(name="MarcoPolo-proc", target=runMarcoPolo, args=(mainQueue,))
+    littleSpy = multiprocessing.Process(name="littleSpy-proc", target=runLittleSpy, args=(ballLocation, ballLocated,))
 
 
 def main():
