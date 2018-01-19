@@ -68,7 +68,6 @@ def marcoPoloProc(azimuth, exitProcess):
     print name, " Starting"
 
     nextAzimuth = 0
-    waitForPolo = 0
 
     SoundLocalization = SoundLocalization("SoundLocalization", memory)
     Speecher = SpeechRecognition("Speecher", memory)
@@ -99,7 +98,6 @@ def marcoPoloProc(azimuth, exitProcess):
     # except:
     except Exception, e:
         print "Unexpected error:", sys.exc_info()[0] , ": ", str(e)
-        pass
     finally:
         print name, " Exiting"
         Speecher.stop()

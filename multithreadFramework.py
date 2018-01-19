@@ -5,6 +5,8 @@ from time import sleep
 import numpy as np
 from naoqi import ALModule, ALProxy, ALBroker
 from ReactToTouch import *
+from SoundLocalization import SoundLocalization
+from wordSpotting import SpeechRecognition
 
 ip = "192.168.1.115"
 port = 9559
@@ -36,9 +38,13 @@ am.setBackgroundStrategy("none")
 
 # multithread variables
 exampleVariable = False
+azimuth = False
+exitProcess = False
 
 # threads
 exampleProcess = False
+marcoPoloProcess = False
+
 
 
 
@@ -73,6 +79,7 @@ def exampleProc(exampleVariable):
         pass
 
     print name, " Exiting"
+
 
 ################################################################################
 # Detecting Balls Processes
@@ -144,27 +151,67 @@ def detectBallProcess(ballLocation, ballLocated, colour):
 ################################################################################
 # Marco Polo
 ################################################################################
-def runMarcoPolo(queue):
+def runMarcoPolo(queue, azimuth, exitProcess):
+    global SoundLocalization, Speecher
+    pythonBroker = ALBroker("pythonBroker","0.0.0.0", 9600, ip, port)
+    name = multiprocessing.current_process().name
+    print name, " Starting"
+
     print 'running marco polo'
     tts.say("The rules are as follows")
-    tts.say("First you hide somewhere in the room. I am still learning so not too difficult please..")
+    tts.say("First you hide somewhere in the room.")
+    tts.say("I am still learning so don't make it too difficult please.")
     tts.say("I call Marco")
     tts.say("And you respond with Polo!")
 
-    # this is supposed to be the behavior process. This process will listen for certain events and perform certain
-    # behaviors, like calling Marco and waiting for you to respond with Polo. This needs implementation still.
-    wonMarcoPolo = False
-    i = 0
-    while True:
-        if wonMarcoPolo:
-            break
-        i += 1
-        if i >= 5:
-            wonMarcoPolo = True
-        queue.put(wonMarcoPolo)
-        sleep(1)
+    SoundLocalization = SoundLocalization("SoundLocalization", memory)
+    Speecher = SpeechRecognition("Speecher", memory)
+    Speecher.getSpeech(["stop", "marco", "polo"], True)
 
-    print 'exiting marco polo'
+    nextAzimuth = 0
+    try:
+        while not exitProcess.value:
+            # test speech recognition
+            # print "Recognized word:"  , Speecher.recognizedWord
+            # if Speecher.recognizedWord != False:
+            #     word = Speecher.recognizedWord
+            #     Speecher.recognizedWord = False
+            #     say("Did you say" + word)
+            # sleep(0.1)
+
+            # Get a reply from the other person
+            getPolo = waitForPolo(Speecher)
+            while not getPolo:
+                getPolo = waitForPolo(Speecher)
+
+            print "I heard Polo"
+
+            # Save the location of the speaker, and rotate to them
+            print "Azimuth of speaker is:" + nextAzimuth
+            nextAzimuth = SoundLocalization.azimuth
+            azimuthToRotate(nextAzimuth)
+
+    # except:
+    except Exception, e:
+        print "Unexpected error:", sys.exc_info()[0] , ": ", str(e)
+    finally:
+        print name, " Exiting"
+        Speecher.stop()
+
+
+    # wonMarcoPolo = False
+    # i = 0
+    # while True:
+    #     if wonMarcoPolo:
+    #         break
+    #     i += 1
+    #     if i >= 5:
+    #         wonMarcoPolo = True
+    #     queue.put(wonMarcoPolo)
+    #     sleep(1)
+
+
+
 
 ################################################################################
 # I Spy With My Little Eye
@@ -233,7 +280,7 @@ def setup():
     global pythonBroker
 
     # add threads and thread variables here
-    global exampleProcess, exampleVariable, mainQueue, marcoPolo
+    global exampleProcess, exampleVariable, mainQueue, marcoPolo, azimuth, exitProcess
 
 
     # Set robot to default posture
@@ -248,10 +295,12 @@ def setup():
     ballLocation = manager.Value('i', -1)
     ballLocated = manager.Value('i', False)
     mainQueue = multiprocessing.Queue()
+    azimuth = manager.Value('i', 0)
+    exitProcess = manager.Value('i', False)
 
     # extra threads
     exampleProcess = multiprocessing.Process(name = "example-proc", target=exampleProc, args=(exampleVariable,))
-    marcoPolo = multiprocessing.Process(name="MarcoPolo-proc", target=runMarcoPolo, args=(mainQueue,))
+    marcoPolo = multiprocessing.Process(name="MarcoPolo-proc", target=runMarcoPolo, args=(mainQueue,azimuth, exitProcess,))
     littleSpy = multiprocessing.Process(name="littleSpy-proc", target=runLittleSpy, args=(ballLocation, ballLocated,))
 
 
@@ -259,7 +308,7 @@ def main():
 
     global pythonBroker, ReactToTouch
     # add threads and thread variables here
-    global exampleProcess, exampleVariable, marcoPolo, mainQueue
+    global exampleProcess, exampleVariable, marcoPolo, mainQueue, azimuth, exitProcess
 
     try:
         # start threads
@@ -318,6 +367,8 @@ def main():
         print "Unexpected error:", sys.exc_info()[0] , ": ", str(e)
     finally:
         say("Shutting down")
+        exitProcess.value = True
+        sleep(1.0)
         # rest
         postureProxy.goToPosture("Crouch", 0.6667)
         motionProxy.rest()
