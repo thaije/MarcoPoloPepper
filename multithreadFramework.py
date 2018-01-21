@@ -8,16 +8,14 @@ from ReactToTouch import *
 from SoundLocalization import SoundLocalization
 from wordSpotting import SpeechRecognition
 
+# general variables
 ip = "192.168.1.115"
 port = 9559
-
-
-# general variables
 duration = 20
 time_out = 0.2
 
+#initiate proxies
 try:
-    # proxies
     postureProxy = ALProxy("ALRobotPosture", ip ,port )
     motionProxy = ALProxy("ALMotion", ip ,port )
     touchProxy = ALProxy("ALTouch", ip, port)
@@ -35,18 +33,12 @@ am = ALProxy("ALAutonomousMoves", ip ,port )
 am.setExpressiveListeningEnabled(False)
 am.setBackgroundStrategy("none")
 
-
 # multithread variables
-exampleVariable = False
 azimuth = False
 exitProcess = False
 
 # threads
-exampleProcess = False
 marcoPoloProcess = False
-
-
-
 
 ################################################################################
 # General functions
@@ -64,29 +56,12 @@ def say(str):
 
 
 ################################################################################
-# Example process
-################################################################################
-def exampleProc(exampleVariable):
-    name = multiprocessing.current_process().name
-    print name, " Starting"
-
-    try:
-        while True:
-            exampleVariable.value += 1
-            sleep(0.2)
-    except:
-        print "Error in process ", name
-        pass
-
-    print name, " Exiting"
-
-
-################################################################################
 # Detecting Balls Processes
 ################################################################################
 # set balldetection variables
 ballDetected = False
 ballDetectionProcess = False
+
 # camera variables
 resolution = 1
 resolutionX = 320
@@ -95,6 +70,7 @@ ballThreshold = 35
 foundBall = False
 videoProxy = False
 cam = False
+
 # Try to center the ball (with a certain threshold)
 def centerOnBall(ballCoords, ballLocation):
     x = ballCoords[0]
@@ -116,6 +92,7 @@ def centerOnBall(ballCoords, ballLocation):
         ballLocation.value = "centered"
         # look("up")
 
+# TODO implement colour recognition for ball-finding
 def detectBallProcess(ballLocation, ballLocated, colour):
     name = multiprocessing.current_process().name
     print name, " Starting"
@@ -145,7 +122,6 @@ def detectBallProcess(ballLocation, ballLocated, colour):
             sleep(0.2)
     except:
         videoProxy.unsubscribe(cam)
-    videoProxy.unsubscribe(cam)
     print name, " Exiting"
 
 ################################################################################
@@ -158,11 +134,11 @@ def runMarcoPolo(queue, azimuth, exitProcess):
     print name, " Starting"
 
     print 'running marco polo'
-    tts.say("The rules are as follows")
-    tts.say("First you hide somewhere in the room.")
-    tts.say("I am still learning so don't make it too difficult please.")
-    tts.say("I call Marco")
-    tts.say("And you respond with Polo!")
+    say("The rules are as follows")
+    say("First you hide somewhere in the room.")
+    say("I am still learning so don't make it too difficult please.")
+    say("I call Marco")
+    say("And you respond with Polo!")
 
     SoundLocalization = SoundLocalization("SoundLocalization", memory)
     Speecher = SpeechRecognition("Speecher", memory)
@@ -197,21 +173,7 @@ def runMarcoPolo(queue, azimuth, exitProcess):
     finally:
         print name, " Exiting"
         Speecher.stop()
-
-
-    # wonMarcoPolo = False
-    # i = 0
-    # while True:
-    #     if wonMarcoPolo:
-    #         break
-    #     i += 1
-    #     if i >= 5:
-    #         wonMarcoPolo = True
-    #     queue.put(wonMarcoPolo)
-    #     sleep(1)
-
-
-
+        # TODO stop the broker??
 
 ################################################################################
 # I Spy With My Little Eye
@@ -225,22 +187,23 @@ def runMarcoPolo(queue, azimuth, exitProcess):
 # Provide another hint if necessary. ...
 # Let the player who guesses correctly become the next spy.
 def runLittleSpy(ballLocation, ballLocated):
-    tts.say("We are playing I spy with my little eye")
-    tts.say("These are the rules")
-    tts.say("You will place several balls in the room")
-    tts.say("You tell me the colour of the ball you picked")
-    tts.say("Then I will try to find the ball you picked")
-    tts.say("When I pick the wrong ball, you say WRONG!")
-    tts.say("When I have found the right ball, you say CORRECT!")
-    tts.say("We will play this game for three rounds.")
-    tts.say("I hope you are ready!")
+    # give instructions to the game
+    say("We are playing I spy with my little eye")
+    say("These are the rules")
+    say("You will place several balls in the room")
+    say("You tell me the colour of the ball you picked")
+    say("Then I will try to find the ball you picked")
+    say("When I pick the wrong ball, you say WRONG!")
+    say("When I have found the right ball, you say CORRECT!")
+    say("We will play this game for three rounds.")
+    say("I hope you are ready!")
     sleep(1)
 
     # decide on the colours of the balls
     ballColours = ["pink" "red" "blue" "yellow" "orange" "green" "white" "purple"]
 
     for i in range(0,1): # every round do
-        tts.say("pick a ball")
+        say("pick a ball")
         ballColourDecided = False
         ballColour = ""
         # decide on the ballcolour to find!
@@ -250,27 +213,33 @@ def runLittleSpy(ballLocation, ballLocated):
             ballColour = "blue" # TODO make this: = wordspotting ballcolours or something
             ballColourDecided = True
 
-        tts.say("I will look for a ball that is " + ballColour)
+        say("I will look for a ball that is " + ballColour)
+        # TODO make eyeleds same colour as the ball we are looking for
 
         # look for the fucking ball, boyeah
         ballDetectionProcess = multiprocessing.Process(name="ball-detection-proc", target=detectBallProcess,
                                                        args=(ballLocation, ballLocated, ballColour,))
-        ballDetectionProcess.start()
-        while not ballLocated:
-            # TODO while you haven't found the ball, look and turn around and check for balls
-            sleep(0.1)
 
-        ballDetectionProcess.terminate()
-        tts.say("Is it that ball?")
-        # TODO also look at the ball
+        correct = False # start with False
+        while not correct:
+            # TODO this is a thread started in a thread, is that okay?? needs checking
+            ballDetectionProcess.start()
+            while not ballLocated:
+                # TODO while you haven't found the ball, look and turn around and check for balls
+                sleep(0.1)
 
-        # listen for the answer and classify it as right or wrong
-        correct = True # start with False
-        # TODO listen for "correct" or "wrong"
+            ballDetectionProcess.terminate()
+            say("Is it that ball?")
+            # TODO also look and point at the ball
 
-        if correct:
-            tts.say("yay!")
-            break
+            # listen for the answer and classify it as right or wrong
+            # TODO listen for "correct" or "wrong"
+
+            if correct:
+                say("yay!")
+                break
+            else:
+                say("Okay, I will continue my search for a " + ballColour + " ball.")
 
 
 ################################################################################
@@ -280,18 +249,18 @@ def setup():
     global pythonBroker
 
     # add threads and thread variables here
-    global exampleProcess, exampleVariable, mainQueue, marcoPolo, azimuth, exitProcess
-
+    global mainQueue, marcoPolo, azimuth, exitProcess, littleSpy
+    # TODO explain why these are both global and passed to the processes. shouldn't one of these be enough?
 
     # Set robot to default posture
     postureProxy.goToPosture("Stand", 0.6667)
+    # TODO we have the pythonbroker now at three locations. make it generally defined in top?
     pythonBroker = ALBroker("pythonBroker","0.0.0.0", 9600, ip, port)
 
     say("Initializing threads")
 
     # multithread variables
     manager = multiprocessing.Manager()
-    exampleVariable = manager.Value('i', 0)
     ballLocation = manager.Value('i', -1)
     ballLocated = manager.Value('i', False)
     mainQueue = multiprocessing.Queue()
@@ -299,42 +268,42 @@ def setup():
     exitProcess = manager.Value('i', False)
 
     # extra threads
-    exampleProcess = multiprocessing.Process(name = "example-proc", target=exampleProc, args=(exampleVariable,))
     marcoPolo = multiprocessing.Process(name="MarcoPolo-proc", target=runMarcoPolo, args=(mainQueue,azimuth, exitProcess,))
     littleSpy = multiprocessing.Process(name="littleSpy-proc", target=runLittleSpy, args=(ballLocation, ballLocated,))
 
 
 def main():
-
     global pythonBroker, ReactToTouch
-    # add threads and thread variables here
-    global exampleProcess, exampleVariable, marcoPolo, mainQueue, azimuth, exitProcess
+    # add threads here
+    global marcoPolo, littleSpy
+    # add thread variables here
+    global mainQueue, azimuth, exitProcess
 
     try:
         # start threads
         setup()
-        #exampleProcess.start()
+
+        # start the process that responds to touch
+        ReactToTouch = ReactToTouch("ReactToTouch", memory)
 
         # start timer
         start = time.time()
         end = time.time()
 
-        pythonBroker = ALBroker("pythonBroker", "0.0.0.0", 9559, ip, port)
-        ReactToTouch = ReactToTouch("ReactToTouch", memory)
-
         while end - start < duration:
 
-            #print "Example variable is:" , exampleVariable.value
             if ReactToTouch.parts != []:
                 print 'touched bodyparts are: \n', ReactToTouch.parts
                 parts = ReactToTouch.parts
                 ReactToTouch.parts = [] # make the list empty again
                 for part in parts:
                     print 'current part is ', part
+                    # TODO implement STOP method for touchrecognition, so system won't be spending energy on recognizing
+                    # touch when this is not an aspect of importance
                     if "Head" in part:
                         print 'time for marco polo'
                         # make a process for Marco Polo
-                        tts.say("lets play a game of Marco polo!")
+                        say("lets play a game of Marco polo!")
                         marcoPolo.start()
 
                         while True:
@@ -343,30 +312,32 @@ def main():
                             except Queue.Empty:
                                 pass # do nothing
                             else:
-                                if wonMP is True: # if you've won marcopolo, finish this part
+                                if wonMP: # if you've won marcopolo, finish this part
                                     break
                         marcoPolo.join()
-                        tts.say('that was fun!')
-                        break # don't check other parts if you have already found a part
+                        say('that was fun!')
+                        break # don't check other the other parts in the list if you have already found a part
                     elif "Hand" in part:
                         # make a process for I Spy with my little Eye
-                        tts.say("you choose to play I spy with my little eye")
-                        tts.say("lets have some fun!")
+                        say("you choose to play I spy with my little eye")
+                        say("lets have some fun!")
                         break # don't check other parts if you have already found a part
 
             # update time
-            sleep(0.2)
+            sleep(0.1)
             end = time.time()
 
         ReactToTouch.unsubscribe()
-        say("This was my presentation")
+        say("Thank you for playing, I had a lot of fun!")
+        say("I hope we can play again sometime.")
+        say("Bye!")
 
     except KeyboardInterrupt:
         print "Interrupted by user, shutting down"
     except Exception, e:
         print "Unexpected error:", sys.exc_info()[0] , ": ", str(e)
     finally:
-        say("Shutting down")
+        say("I am now shutting down.")
         exitProcess.value = True
         sleep(1.0)
         # rest
