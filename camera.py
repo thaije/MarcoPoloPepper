@@ -32,25 +32,46 @@ def setupCamera(ip, port):
     return videoProxy, cam
 
 
-def findBall(image):
+def findBall(image, ballColour="blue"): # default ballcolour to recognize is blue
 
     ###################################
     # Apply a threshold
     ##################################
 
-    # image = cv2.imread("ballimage.png")
-
     # lower_blue = np.array([70,50,50], dtype=np.uint8)
     # upper_blue = np.array([170, 255, 255], dtype=np.uint8)
-    lower_blue = np.array([110,50,50], dtype=np.uint8)
-    upper_blue = np.array([130, 255, 255], dtype=np.uint8)
 
+    # ballColours = ["pink" "red" "blue" "yellow" "orange" "green" "white"]
+    if ballColour == "pink": # TODO adjust colour ranges!! now only blue balls are recognized, always!
+        lower_colour = np.array([110,50,50], dtype=np.uint8)
+        upper_colour = np.array([130, 255, 255], dtype=np.uint8)
+    elif ballColour == "green":
+        lower_colour = np.array([110, 50, 50], dtype=np.uint8)
+        upper_colour = np.array([130, 255, 255], dtype=np.uint8)
+    elif ballColour == "yellow":
+        lower_colour = np.array([110, 50, 50], dtype=np.uint8)
+        upper_colour = np.array([130, 255, 255], dtype=np.uint8)
+    elif ballColour == "red":
+        lower_colour = np.array([110, 50, 50], dtype=np.uint8)
+        upper_colour = np.array([130, 255, 255], dtype=np.uint8)
+    elif ballColour == "blue":
+        lower_colour = np.array([110, 50, 50], dtype=np.uint8)
+        upper_colour = np.array([130, 255, 255], dtype=np.uint8)
+    elif ballColour == "white":
+        lower_colour = np.array([110, 50, 50], dtype=np.uint8)
+        upper_colour = np.array([130, 255, 255], dtype=np.uint8)
+    elif ballColour == "orange":
+        lower_colour = np.array([110, 50, 50], dtype=np.uint8)
+        upper_colour = np.array([130, 255, 255], dtype=np.uint8)
+    else: # default is blue balls
+        lower_colour = np.array([110, 50, 50], dtype=np.uint8)
+        upper_colour = np.array([130, 255, 255], dtype=np.uint8)
 
     hsvImage = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
-    color_mask = cv2.inRange(hsvImage, lower_blue, upper_blue)
+    color_mask = cv2.inRange(hsvImage, lower_colour, upper_colour)
 
-    blue_image = cv2.bitwise_and(image, image, mask=color_mask)
+    #colour_image = cv2.bitwise_and(image, image, mask=color_mask)
 
 
     ##############################################
@@ -59,7 +80,7 @@ def findBall(image):
     kernel = np.ones((9,9), np.uint8)
 
     opening = cv2.morphologyEx(color_mask, cv2.MORPH_OPEN, kernel)
-    closing = cv2.morphologyEx(color_mask, cv2.MORPH_CLOSE, kernel)
+    closing = cv2.morphologyEx(opening, cv2.MORPH_CLOSE, kernel)
 
     smoothed_mask = cv2.GaussianBlur(closing, (9,9), 0)
 

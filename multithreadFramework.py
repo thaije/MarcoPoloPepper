@@ -92,8 +92,7 @@ def centerOnBall(ballCoords, ballLocation):
         ballLocation.value = "centered"
         # look("up")
 
-# TODO implement colour recognition for ball-finding
-def detectBallProcess(ballLocation, ballLocated, colour):
+def detectBallProcess(ballLocation, ballLocated, ballColour):
     name = multiprocessing.current_process().name
     print name, " Starting"
 
@@ -106,7 +105,7 @@ def detectBallProcess(ballLocation, ballLocated, colour):
             image = camera.getFrame(videoProxy, cam)
             if image is not False:
                 # Check if we can find a ball, and point the head towards it if so
-                ballDet = camera.findBall(image)
+                ballDet = camera.findBall(image, ballColour)
 
                 if ballDet != False:
                     ballLocated.value = True
@@ -127,7 +126,8 @@ def detectBallProcess(ballLocation, ballLocated, colour):
 ################################################################################
 # Marco Polo
 ################################################################################
-def runMarcoPolo(queue, azimuth, exitProcess):
+# TODO ik heb een wonGame variabele gemaakt, maar ik denk dat die dezelfde functie heeft als jouw exitProcess? kijk er vooral even naar :)
+def runMarcoPolo(queue, azimuth, exitProcess, wonGame):
     global SoundLocalization, Speecher
     pythonBroker = ALBroker("pythonBroker","0.0.0.0", 9600, ip, port)
     name = multiprocessing.current_process().name
@@ -186,7 +186,7 @@ def runMarcoPolo(queue, azimuth, exitProcess):
 # Let each player guess. ...
 # Provide another hint if necessary. ...
 # Let the player who guesses correctly become the next spy.
-def runLittleSpy(ballLocation, ballLocated):
+def runLittleSpy(ballLocation, ballLocated, wonGame):
     # give instructions to the game
     say("We are playing I spy with my little eye")
     say("These are the rules")
@@ -200,21 +200,28 @@ def runLittleSpy(ballLocation, ballLocated):
     sleep(1)
 
     # decide on the colours of the balls
-    ballColours = ["pink" "red" "blue" "yellow" "orange" "green" "white" "purple"]
+    ballColours = ["pink" "red" "blue" "yellow" "orange" "green" "white"]
+    Speecher = SpeechRecognition("Speecher", memory)
 
     for i in range(0,1): # every round do
-        say("pick a ball")
+        say("this is round " + str(i))
+        say("Pick a ball")
         ballColourDecided = False
         ballColour = ""
+
+        Speecher.getSpeech(ballColours, True)
+        # TODO implement check on correct understanding of the colour? say("is this the correct colour") recognize yes/no?
         # decide on the ballcolour to find!
         while not ballColourDecided:
+            if Speecher.recognizedWord is not False: #default is False
+                ballColour = Speecher.recognizedWord
+                Speecher.recognizedWord = False
+                ballColourDecided = True
+                Speecher.stop() # stop listening for the colour to detect
             sleep(0.5)
-            # TODO listen for the ball-colour
-            ballColour = "blue" # TODO make this: = wordspotting ballcolours or something
-            ballColourDecided = True
 
         say("I will look for a ball that is " + ballColour)
-        # TODO make eyeleds same colour as the ball we are looking for
+        # TODO make eyeleds same colour as the ball we are looking for? or too much effort for too little reward? :p
 
         # look for the fucking ball, boyeah
         ballDetectionProcess = multiprocessing.Process(name="ball-detection-proc", target=detectBallProcess,
@@ -230,13 +237,24 @@ def runLittleSpy(ballLocation, ballLocated):
 
             ballDetectionProcess.terminate()
             say("Is it that ball?")
-            # TODO also look and point at the ball
+            # TODO also point at the ball?
 
             # listen for the answer and classify it as right or wrong
-            # TODO listen for "correct" or "wrong"
+            Speecher.getSpeech(["yes", "no", "correct", "wrong"], True)
+            while True:
+                if Speecher.recognizedWord is not False:
+                    word = Speecher.recognizedWord
+                    Speecher.recognizedWord = False
+                    Speecher.stop()
+                    if word == "true" or word == "correct":
+                        correct = True
+                    elif word == "no" or word == "wrong":
+                        correct = False
+                    break
 
             if correct:
                 say("yay!")
+                say("This is the end of the first round.")
                 break
             else:
                 say("Okay, I will continue my search for a " + ballColour + " ball.")
@@ -247,10 +265,11 @@ def runLittleSpy(ballLocation, ballLocated):
 ################################################################################
 def setup():
     global pythonBroker
-
-    # add threads and thread variables here
-    global mainQueue, marcoPolo, azimuth, exitProcess, littleSpy
-    # TODO explain why these are both global and passed to the processes. shouldn't one of these be enough?
+    # add threads here
+    global marcoPolo, littleSpy
+    # add thread variables here
+    global mainQueue, azimuth, exitProcess, wonGame
+    # TODO can you explain why these variables are both global and passed to the processes. shouldn't one of these be enough?
 
     # Set robot to default posture
     postureProxy.goToPosture("Stand", 0.6667)
@@ -266,10 +285,11 @@ def setup():
     mainQueue = multiprocessing.Queue()
     azimuth = manager.Value('i', 0)
     exitProcess = manager.Value('i', False)
+    wonGame = manager.Value('i', False)
 
     # extra threads
-    marcoPolo = multiprocessing.Process(name="MarcoPolo-proc", target=runMarcoPolo, args=(mainQueue,azimuth, exitProcess,))
-    littleSpy = multiprocessing.Process(name="littleSpy-proc", target=runLittleSpy, args=(ballLocation, ballLocated,))
+    marcoPolo = multiprocessing.Process(name="MarcoPolo-proc", target=runMarcoPolo, args=(mainQueue,azimuth, exitProcess, wonGame,))
+    littleSpy = multiprocessing.Process(name="littleSpy-proc", target=runLittleSpy, args=(ballLocation, ballLocated, wonGame,))
 
 
 def main():
@@ -277,7 +297,7 @@ def main():
     # add threads here
     global marcoPolo, littleSpy
     # add thread variables here
-    global mainQueue, azimuth, exitProcess
+    global mainQueue, azimuth, exitProcess, wonGame
 
     try:
         # start threads
@@ -291,7 +311,8 @@ def main():
         end = time.time()
 
         while end - start < duration:
-
+            # make sure wonGame is always False when starting a new round!
+            wonGame = False
             if ReactToTouch.parts != []:
                 print 'touched bodyparts are: \n', ReactToTouch.parts
                 parts = ReactToTouch.parts
@@ -323,6 +344,9 @@ def main():
                         # make a process for I Spy with my little Eye
                         say("you choose to play I spy with my little eye")
                         say("lets have some fun!")
+
+                        littleSpy.start()
+
                         ReactToTouch.subscribeTouch()
                         break # don't check other parts if you have already found a part
 
