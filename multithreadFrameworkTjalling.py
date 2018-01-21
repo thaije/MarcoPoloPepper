@@ -1,7 +1,10 @@
-import multiprocessing, Queue, signal, sys, random, math, cv2
-from time import time, sleep
+import multiprocessing, Queue, signal, sys, random, cv2, math
+import time
+import camera
+from time import sleep
+import numpy as np
 from naoqi import ALModule, ALProxy, ALBroker
-
+from ReactToTouch import *
 from SoundLocalization import SoundLocalization
 from wordSpotting import SpeechRecognition
 
@@ -10,15 +13,25 @@ port = 9559
 
 
 # general variables
-duration = 60
+duration = 20
+time_out = 0.2
+pepperIritationThreshold = 3
+pepperPissedOffThreshold = 6
 
-# proxies
-postureProxy = ALProxy("ALRobotPosture", ip ,port )
-motionProxy = ALProxy("ALMotion", ip ,port )
-tts = ALProxy("ALTextToSpeech", ip , port )
-memory = ALProxy("ALMemory", ip, port)
-LED = ALProxy("ALLeds", ip, port)
-pythonBroker = False
+try:
+    # proxies
+    postureProxy = ALProxy("ALRobotPosture", ip ,port )
+    motionProxy = ALProxy("ALMotion", ip ,port )
+    touchProxy = ALProxy("ALTouch", ip, port)
+    tts = ALProxy("ALTextToSpeech", ip , port )
+    memory = ALProxy("ALMemory", ip, port)
+    LED = ALProxy("ALLeds", ip, port)
+    # navigationProxy = ALProxy("ALNavigationProxy")
+    pythonBroker = False
+except Exception, e:
+    print "could not create all proxies"
+    print "error was ", e
+    sys.exit(1)
 
 # disable ALAutonomousMoves bug
 am = ALProxy("ALAutonomousMoves", ip ,port )
@@ -36,6 +49,8 @@ exampleProcess = False
 marcoPoloProcess = False
 
 
+
+
 ################################################################################
 # General functions
 ################################################################################
@@ -47,34 +62,137 @@ def checkProxyDuplicates(name):
         pass
 
 def say(str):
-    # tts.say(str)
-    print(str)
+    tts.say(str)
+    print('saying: ',str)
 
 def rotateToVoice(azimu):
     print "rotate with azimuth ", azimu
     motionProxy.moveTo(0, 0, azimu)
 
+def setEyeLeds(colour, intensity):
+    if colour == "red":
+        LED.fadeRGB('FaceLeds', intensity, 0, 0, 1)
+    if colour == "none":
+        LED.fadeRGB('FaceLeds', 0, 0, 0, 1)
+
 
 
 ################################################################################
-# Marco Polo process
+# Example process
 ################################################################################
-def marcoPoloProc(azimuth, exitProcess):
-    global SoundLocalization, Speecher
-
-    pythonBroker = ALBroker("pythonBroker","0.0.0.0", 9600, ip, port)
-
+def exampleProc(exampleVariable):
     name = multiprocessing.current_process().name
     print name, " Starting"
 
-    nextAzimuth = 0
+    try:
+        while True:
+            exampleVariable.value += 1
+            sleep(0.2)
+    except:
+        print "Error in process ", name
+        pass
+
+    print name, " Exiting"
+
+
+################################################################################
+# Detecting Balls Processes
+################################################################################
+# set balldetection variables
+ballDetected = False
+ballDetectionProcess = False
+# camera variables
+resolution = 1
+resolutionX = 320
+resolutionY = 240
+ballThreshold = 35
+foundBall = False
+videoProxy = False
+cam = False
+# Try to center the ball (with a certain threshold)
+def centerOnBall(ballCoords, ballLocation):
+    x = ballCoords[0]
+    y = ballCoords[1]
+
+    # -1=not found, 0=centered, 1=top, 2=right, 3=bottom, 4=left
+    if x > (resolutionX/2 + ballThreshold):
+        ballLocation.value = "right"
+        # look("right")
+    elif x < (resolutionX/2 - ballThreshold):
+        ballLocation.value = "left"
+        # look("left")
+    elif y > (resolutionY/2 + ballThreshold):
+        ballLocation.value = "down"
+        # look("down")
+    elif y < (resolutionY/2 - ballThreshold):
+        ballLocation.value = "up"
+    else:
+        ballLocation.value = "centered"
+        # look("up")
+
+def detectBallProcess(ballLocation, ballLocated, colour):
+    name = multiprocessing.current_process().name
+    print name, " Starting"
+
+    # setup camera stream
+    videoProxy, cam = camera.setupCamera(ip, port)
+
+    try:
+        while True:
+            # get and process a camera frame
+            image = camera.getFrame(videoProxy, cam)
+            if image is not False:
+                # Check if we can find a ball, and point the head towards it if so
+                ballDet = camera.findBall(image)
+
+                if ballDet != False:
+                    ballLocated.value = True
+                    centerOnBall(ballDet, ballLocation)
+                    print "Ball detected"
+                else:
+                    ballLocated.value = False
+                    print "No ball detected"
+
+                if cv2.waitKey(33) == 27:
+                    videoProxy.unsubscribe(cam)
+                    break
+            sleep(0.2)
+    except:
+        videoProxy.unsubscribe(cam)
+    videoProxy.unsubscribe(cam)
+    print name, " Exiting"
+
+################################################################################
+# Marco Polo
+################################################################################
+def runMarcoPolo(queue, azimuth, exitProcess):
+    global SoundLocalization, Speecher, pissedOffFactor
+
+    pythonBroker = ALBroker("pythonBroker","0.0.0.0", 9600, ip, port)
+    name = multiprocessing.current_process().name
+    print name, " Starting"
+
+    print 'running marco polo'
+    say("The rules are as follows")
+    say("First I count down and you hide somewhere in the room.")
+    say("I am still learning so don't make it too difficult please.")
+    say("Then I call Marco")
+    say("And you respond with Polo!")
 
     SoundLocalization = SoundLocalization("SoundLocalization", memory)
     Speecher = SpeechRecognition("Speecher", memory)
     Speecher.getSpeech(["stop", "marco", "polo"], True)
 
+    nextAzimuth = 0
     try:
+        # TODO: navigate to person
+        # test navigation proxy
+        # if navigationProxy.navigateTo(2.0, 0.0):
+        #     print "succesfully navigated 2m forward"
+        # else:
+        #     print "couldn't find succesfull path"
         while not exitProcess.value:
+            sleep(0.5)
             # test speech recognition
             # print "Recognized word:"  , Speecher.recognizedWord
             # if Speecher.recognizedWord != False:
@@ -86,14 +204,46 @@ def marcoPoloProc(azimuth, exitProcess):
             # Get a reply from the other person
             getPolo = waitForPolo(Speecher)
             while not getPolo:
+                # TODO: get angry
+                # # check how pissed off Pepper is because off people ignoring him
+                # if angerManagment(pissedOffFactor):
+                #     queue.put(False)
+                #     break
+
+                # Retry to get a reply
+                pissedOffFactor += 1
                 getPolo = waitForPolo(Speecher)
 
+            # TODO: get angry
+            # # Set the eyes LED colours according to his pissed off factor, and
+            # # cheat if Pepper is tired of your games
+            # if angerManagment(pissedOffFactor):
+            #     print "Pepper is pissed off and will cheat"
+            #     cheat()
+            #     break
+
+
             print "I heard Polo"
+
+            # check how close we are to the other person
+            if SoundLocalization.energy > 10000:
+                say("You sound really close, I think I found you!")
+
+                # TODO: Do grabbing motion forwards / face recognition to check if won?
+                # check to see if we can find a face closeby, if true we won
+                # if faceTracking returns true:
+                #     queue.put(True)
+                #     break
 
             # Save the location of the speaker, and rotate to them
             print "Azimuth of speaker is:" + nextAzimuth
             nextAzimuth = SoundLocalization.azimuth
-            azimuthToRotate(nextAzimuth)
+            rotateToVoice(nextAzimuth)
+
+            # TODO: drive towards voice
+
+            # Pepper gets pissed off more with each iteration it can't find you or doesn't get a reply
+            pissedOffFactor += 1
 
     # except:
     except Exception, e:
@@ -101,6 +251,18 @@ def marcoPoloProc(azimuth, exitProcess):
     finally:
         print name, " Exiting"
         Speecher.stop()
+
+
+    # wonMarcoPolo = False
+    # i = 0
+    # while True:
+    #     if wonMarcoPolo:
+    #         break
+    #     i += 1
+    #     if i >= 5:
+    #         wonMarcoPolo = True
+    #     queue.put(wonMarcoPolo)
+    #     sleep(1)
 
 
 
@@ -130,24 +292,105 @@ def waitForPolo(Speecher):
 
 
 
+def countDown():
+    say("I am going to start counting down!")
+
+    # rotate facing the wall
+    motionProxy.moveTo(0, 0, Math.pi/2.0)
+    sleep(2.0)
+    # TODO: Put hands before eyes
+
+    say("Five")
+    sleep(0.5)
+    say("Four")
+    sleep(0.5)
+    say("Three")
+    sleep(0.5)
+    say("Two")
+    sleep(0.5)
+    say("One")
+    sleep(0.5)
+    say("Zero")
+
+    # Turn around and go to default position
+    postureProxy.goToPosture("Stand", 0.6667)
+    motionProxy.moveTo(0, 0, Math.pi/2.0)
+    sleep(2.0)
+
+
+# Set the face leds according to the irritation level of Pepper, and
+# check if the irritation has passed the threshold
+def angerManagment(pissedOffFactor):
+    # colour the face leds of Pepper if he gets irritated
+    if pissedOffFactor > pepperIritationThreshold:
+        setEyeLeds(pissedOffFactor * 0.1)
+
+    # return true
+    if pissedOffFactor >= pepperPissedOffThreshold:
+        return true
+
+    return false
+
+
+
 ################################################################################
-# Example process
+# I Spy With My Little Eye
 ################################################################################
-def exampleProc(exampleVariable):
-    name = multiprocessing.current_process().name
-    print name, " Starting"
+# Choose the players. ...
+# Select the first spy. ...
+# Pick an object. ...
+# Pick your first hint. ...
+# Provide the first hint. ...
+# Let each player guess. ...
+# Provide another hint if necessary. ...
+# Let the player who guesses correctly become the next spy.
+def runLittleSpy(ballLocation, ballLocated):
+    tts.say("We are playing I spy with my little eye")
+    tts.say("These are the rules")
+    tts.say("You will place several balls in the room")
+    tts.say("You tell me the colour of the ball you picked")
+    tts.say("Then I will try to find the ball you picked")
+    tts.say("When I pick the wrong ball, you say WRONG!")
+    tts.say("When I have found the right ball, you say CORRECT!")
+    tts.say("We will play this game for three rounds.")
+    tts.say("I hope you are ready!")
+    sleep(1)
 
-    try:
-        while True:
-            exampleVariable.value += 1
-            sleep(0.2)
-    except:
-        print "Error in process ", name
-        pass
+    # decide on the colours of the balls
+    ballColours = ["pink" "red" "blue" "yellow" "orange" "green" "white" "purple"]
 
-    print name, " Exiting"
+    for i in range(0,1): # every round do
+        tts.say("pick a ball")
+        ballColourDecided = False
+        ballColour = ""
+        # decide on the ballcolour to find!
+        while not ballColourDecided:
+            sleep(0.5)
+            # TODO listen for the ball-colour
+            ballColour = "blue" # TODO make this: = wordspotting ballcolours or something
+            ballColourDecided = True
 
+        tts.say("I will look for a ball that is " + ballColour)
 
+        # look for the fucking ball, boyeah
+        ballDetectionProcess = multiprocessing.Process(name="ball-detection-proc", target=detectBallProcess,
+                                                       args=(ballLocation, ballLocated, ballColour,))
+        ballDetectionProcess.start()
+        while not ballLocated:
+            # TODO while you haven't found the ball, look and turn around and check for balls
+            sleep(0.1)
+
+        ballDetectionProcess.terminate()
+        tts.say("Is it that ball?")
+        # TODO also look at the ball
+
+        # listen for the answer and classify it as right or wrong
+        correct = True # start with False
+        # TODO listen for "correct" or "wrong"
+
+        if correct:
+            tts.say("yay!")
+            break
 
 
 ################################################################################
@@ -157,75 +400,85 @@ def setup():
     global pythonBroker
 
     # add threads and thread variables here
-    global exampleProcess, exampleVariable, marcoPoloProcess, azimuth, exitProcess
+    global exampleProcess, exampleVariable, mainQueue, marcoPolo, azimuth, exitProcess
 
 
     # Set robot to default posture
-    motionProxy.setStiffnesses("Head", 0.8)
-    # postureProxy.goToPosture("Stand", 0.6667)
+    postureProxy.goToPosture("Stand", 0.6667)
     pythonBroker = ALBroker("pythonBroker","0.0.0.0", 9600, ip, port)
 
     say("Initializing threads")
 
     # multithread variables
     manager = multiprocessing.Manager()
-    exitProcess = manager.Value('i', False)
     exampleVariable = manager.Value('i', 0)
+    ballLocation = manager.Value('i', -1)
+    ballLocated = manager.Value('i', False)
+    mainQueue = multiprocessing.Queue()
     azimuth = manager.Value('i', 0)
+    exitProcess = manager.Value('i', False)
 
     # extra threads
     exampleProcess = multiprocessing.Process(name = "example-proc", target=exampleProc, args=(exampleVariable,))
-    marcoPoloProcess = multiprocessing.Process(name = "marco-polo-proc", target=marcoPoloProc, args=(azimuth,exitProcess,))
+    marcoPolo = multiprocessing.Process(name="MarcoPolo-proc", target=runMarcoPolo, args=(mainQueue,azimuth, exitProcess,))
+    littleSpy = multiprocessing.Process(name="littleSpy-proc", target=runLittleSpy, args=(ballLocation, ballLocated,))
 
 
 def main():
-    global pythonBroker
+
+    global pythonBroker, ReactToTouch
     # add threads and thread variables here
-    global exampleProcess, exampleVariable, marcoPoloProcess, azimuth, exitProcess
+    global exampleProcess, exampleVariable, marcoPolo, mainQueue, azimuth, exitProcess
 
-    setup()
-
-    # start timer
-    start = time()
-    end = time()
     try:
         # start threads
-        exampleProcess.start()
-        marcoPoloProcess.start()
+        setup()
+        #exampleProcess.start()
 
-        print "Pepper doing startup move.."
-        # sleep(4)
+        # start timer
+        start = time.time()
+        end = time.time()
 
-        print "moving"
-        # X = forward speed = forward = 1.0, backward = -1.0
-        # X = 0.5
-        # Y = Sidewards speed = # 1.0 = counter-clockwise, -1.0 = clockwise
-        # Y = 0
-        # Theta = Rotation speed = # 1.0 = counter-clockwise, -1.0 clockwise
-        # Theta = 0
-        # motionProxy.moveToward(0.5, 0, 0)
-        # sleep(2.0)
-        # motionProxy.stopMove()
-
-
-        # x - Distance along the X axis in meters.
-        # y - Distance along the Y axis in meters.
-        # theta - Rotation around the Z axis in radians [-3.1415 to 3.1415].
-        # motionProxy.moveTo(0, 0, math.pi * 1.5)
+        pythonBroker = ALBroker("pythonBroker", "0.0.0.0", 9559, ip, port)
+        ReactToTouch = ReactToTouch("ReactToTouch", memory)
 
         while end - start < duration:
 
-            # print "Exit val main:", exitProcess.value
+            #print "Example variable is:" , exampleVariable.value
+            if ReactToTouch.parts != []:
+                print 'touched bodyparts are: \n', ReactToTouch.parts
+                parts = ReactToTouch.parts
+                ReactToTouch.parts = [] # make the list empty again
+                for part in parts:
+                    print 'current part is ', part
+                    if "Head" in part:
+                        print 'time for marco polo'
+                        # make a process for Marco Polo
+                        tts.say("lets play a game of Marco polo!")
+                        marcoPolo.start()
 
-
-            # print "Azimuth variable is:" , azimuth.value
-
-            # rotateToVoice(azimuth.value)
+                        while True:
+                            try:
+                                wonMP = mainQueue.get(True, time_out)
+                            except Queue.Empty:
+                                pass # do nothing
+                            else:
+                                if wonMP is True: # if you've won marcopolo, finish this part
+                                    break
+                        marcoPolo.join()
+                        tts.say('that was fun!')
+                        break # don't check other parts if you have already found a part
+                    elif "Hand" in part:
+                        # make a process for I Spy with my little Eye
+                        tts.say("you choose to play I spy with my little eye")
+                        tts.say("lets have some fun!")
+                        break # don't check other parts if you have already found a part
 
             # update time
-            sleep(0.5)
-            end = time()
+            sleep(0.2)
+            end = time.time()
 
+        ReactToTouch.unsubscribe()
         say("This was my presentation")
 
     except KeyboardInterrupt:
@@ -237,11 +490,10 @@ def main():
         exitProcess.value = True
         sleep(1.0)
         # rest
-        # postureProxy.goToPosture("Crouch", 0.6667)
+        postureProxy.goToPosture("Crouch", 0.6667)
         motionProxy.rest()
         # stop threads
-        exampleProcess.terminate()
-        marcoPoloProcess.terminate()
+        #exampleProcess.terminate()
         sys.exit(0)
 
 

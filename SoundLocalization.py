@@ -15,6 +15,7 @@ class SoundLocalization(ALModule):
         ALModule.__init__(self,name)
         self.name = name
         self.azimuth = 0
+        self.energy = 0
         self.memory = memory
         memory.subscribeToEvent("ALSoundLocalization/SoundLocated", name, "onLocalize")
 
@@ -31,6 +32,7 @@ class SoundLocalization(ALModule):
             # right az 4.5 (should be 4.7)
 
             self.azimuth = value[1][0]
+            self.energy = value[1][3]
             # print "Azimuth ", value[1][0] , " elevation ", value[1][1] , " with energy:", value[1][3] , " with condifence", value[1][2]
 
             self.memory.subscribeToEvent("ALSoundLocalization/SoundLocated", "SoundLocalization", "onLocalize")
