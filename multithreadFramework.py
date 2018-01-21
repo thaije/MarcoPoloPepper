@@ -285,7 +285,7 @@ def main():
 
         # start the process that responds to touch
         ReactToTouch = ReactToTouch("ReactToTouch", memory)
-
+        ReactToTouch.subscribeTouch()
         # start timer
         start = time.time()
         end = time.time()
@@ -298,9 +298,9 @@ def main():
                 ReactToTouch.parts = [] # make the list empty again
                 for part in parts:
                     print 'current part is ', part
-                    # TODO implement STOP method for touchrecognition, so system won't be spending energy on recognizing
                     # touch when this is not an aspect of importance
                     if "Head" in part:
+                        ReactToTouch.unsubscribeTouch()
                         print 'time for marco polo'
                         # make a process for Marco Polo
                         say("lets play a game of Marco polo!")
@@ -316,11 +316,14 @@ def main():
                                     break
                         marcoPolo.join()
                         say('that was fun!')
+                        ReactToTouch.subscribeTouch()
                         break # don't check other the other parts in the list if you have already found a part
                     elif "Hand" in part:
+                        ReactToTouch.unsubscribeTouch()
                         # make a process for I Spy with my little Eye
                         say("you choose to play I spy with my little eye")
                         say("lets have some fun!")
+                        ReactToTouch.subscribeTouch()
                         break # don't check other parts if you have already found a part
 
             # update time
