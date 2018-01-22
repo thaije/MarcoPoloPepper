@@ -76,7 +76,7 @@ if __name__ == "__main__":
         while True:
             time.sleep(2)
             # print azimuth
-            azimuthToRotate(azimuth)
+            # azimuthToRotate(azimuth)
 
     except KeyboardInterrupt:
         print "Interrupted by user, shutting down"

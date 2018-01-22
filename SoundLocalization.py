@@ -37,4 +37,5 @@ class SoundLocalization(ALModule):
 
             self.memory.subscribeToEvent("ALSoundLocalization/SoundLocated", "SoundLocalization", "onLocalize")
         except:
-            print "Oops error"
+            # print "Oops error"
+            pass

@@ -28,23 +28,36 @@ class SpeechRecognition(ALModule):
         self.wordlist = wordlist
         self.wordspotting = wordspotting
 
-        print "Set get speech"
+        # print "Set get speech"
 
         self.spr.setVocabulary(self.wordlist, self.wordspotting)
         self.memory.subscribeToEvent("WordRecognized", self.name, "onDetect")
 
     def onDetect(self, keyname, value, subscriber_name):
-        self.memory.unsubscribeToEvent("WordRecognized", self.name)
-        self.spr.pause(True)
+        try:
+            self.memory.unsubscribeToEvent("WordRecognized", self.name)
+            self.spr.pause(True)
 
-        self.response = True
-        self.value = value
+            self.response = True
+            self.value = value
+            val = value[0].replace('<...>', '')
+            val = val.strip()
+            self.recognizedWord = val
+            # print "Detected in word spotting", value[0]
 
-        self.recognizedWord = value[0]
-        print "Detected in word spotting", value[0]
-
-        self.getSpeech(self.wordlist, self.wordspotting)
+            self.getSpeech(self.wordlist, self.wordspotting)
+        except:
+            # print "Word spotting error"
+            pass
 
     def stop(self):
-        self.memory.unsubscribeToEvent("WordRecognized", self.name)
+        try:
+            self.memory.unsubscribeToEvent("WordRecognized", self.name)
+        except:
+            pass
         self.spr.pause(True)
+        try:
+            p = ALProxy("ALSpeechRecognition")
+            p.quit()
+        except:
+            pass

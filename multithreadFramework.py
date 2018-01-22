@@ -1,4 +1,4 @@
-import multiprocessing, Queue, signal, sys, random, cv2
+import multiprocessing, Queue, signal, sys, random, cv2, math
 import time
 import camera
 from time import sleep
@@ -13,6 +13,9 @@ ip = "192.168.1.115"
 port = 9559
 duration = 20
 time_out = 0.2
+pepperIritationThreshold = 4
+pepperPissedOffThreshold = 6
+listenForPoloSeconds = 6
 
 #initiate proxies
 try:
@@ -22,6 +25,7 @@ try:
     tts = ALProxy("ALTextToSpeech", ip , port )
     memory = ALProxy("ALMemory", ip, port)
     LED = ALProxy("ALLeds", ip, port)
+    # navigationProxy = ALProxy("ALNavigationProxy")
     pythonBroker = False
 except Exception, e:
     print "could not create all proxies"
@@ -51,8 +55,18 @@ def checkProxyDuplicates(name):
         pass
 
 def say(str):
-    tts.say(str)
+    # tts.say(str)
     print('saying: ',str)
+
+def rotateToVoice(azimu):
+    print "rotate with azimuth ", azimu
+    motionProxy.moveTo(0, 0, azimu)
+
+def setEyeLeds(colour, intensity):
+    if colour == "red":
+        LED.fadeRGB('FaceLeds', intensity, 0, 0, 0.5)
+    if colour == "none":
+        LED.fadeRGB('FaceLeds', intensity, intensity, intensity, 0.5)
 
 
 ################################################################################
@@ -141,39 +155,193 @@ def runMarcoPolo(queue, azimuth, exitProcess, wonGame):
     say("And you respond with Polo!")
 
     SoundLocalization = SoundLocalization("SoundLocalization", memory)
-    Speecher = SpeechRecognition("Speecher", memory)
-    Speecher.getSpeech(["stop", "marco", "polo"], True)
 
+    pissedOffFactor = 0
     nextAzimuth = 0
+    sleep(2.0)
+
+    # countDown()
+
     try:
-        while not exitProcess.value:
-            # test speech recognition
-            # print "Recognized word:"  , Speecher.recognizedWord
-            # if Speecher.recognizedWord != False:
-            #     word = Speecher.recognizedWord
-            #     Speecher.recognizedWord = False
-            #     say("Did you say" + word)
-            # sleep(0.1)
-
+        while True:
             # Get a reply from the other person
-            getPolo = waitForPolo(Speecher)
+            print "getPolo first time"
+            getPolo = waitForPolo()
             while not getPolo:
-                getPolo = waitForPolo(Speecher)
+                print "In getPolo loop, getPolo"
 
-            print "I heard Polo"
+                # # check how pissed off Pepper is because off people ignoring him
+                if angerManagment(pissedOffFactor):
+                    say("You are not playing nice")
+                    break
+
+                # Retry to get a reply
+                pissedOffFactor += 1
+                getPolo = waitForPolo()
+
+
+            # Set the eyes LED colours according to his pissed off factor, and
+            # cheat if Pepper is tired of your games
+            if angerManagment(pissedOffFactor):
+                say("I can't find you. I quit")
+                print "runMarcoPolo - Pepper is pissed off and will cheat"
+                # TODO: cheat
+                cheat()
+                break
+
+            print "runMarcoPolo - I heard Polo"
+
+            print "Energy is:", SoundLocalization.energy
+
+            # # check how close we are to the other person
+            # if SoundLocalization.energy > 0.15:
+            #     tts.say("You sound really close, I think I found you!")
+            #
+            #     # TODO: Do grabbing motion forwards / face recognition to check if won?
+            #     # check to see if we can find a face closeby, if true we won
+            #     # if faceTracking returns true:
+            #     #     queue.put(True)
+            #     #     break
 
             # Save the location of the speaker, and rotate to them
-            print "Azimuth of speaker is:" + nextAzimuth
+            print "Azimuth of speaker is:" , nextAzimuth
             nextAzimuth = SoundLocalization.azimuth
-            azimuthToRotate(nextAzimuth)
+            rotateToVoice(nextAzimuth)
 
-    # except:
+            # TODO: drive towards voice
+
+            # Pepper gets pissed off more with each iteration it can't find you or doesn't get a reply
+            pissedOffFactor += 1
+            sleep(0.5)
+
     except Exception, e:
-        print "Unexpected error:", sys.exc_info()[0] , ": ", str(e)
+        print "runMarcoPolo - Unexpected error:", sys.exc_info()[0] , ": ", str(e)
+        pass
+    except:
+        print "Error"
+        pass
     finally:
         print name, " Exiting"
+        # Speecher.stop()
+        pythonBroker.shutdown()
+
+
+def quitSpeecher(Speecher):
+    try:
         Speecher.stop()
-        # TODO stop the broker??
+    except:
+        pass
+
+# Say Marco, and wait for max x seconds for a Polo reply from the other speaker
+def waitForPolo():
+
+    global Speecher
+    waitForPolo = 0
+    heardPolo = False
+
+    tts.say("Marco?")
+    sleep(0.5)
+    waitForPolo += 0.5
+
+    # start speech recognition
+    try:
+        Speecher = SpeechRecognition("Speecher", memory)
+        Speecher.getSpeech(["stop", "marco", "polo"], True)
+        Speecher.RecognizedWord = False
+    except:
+        quitSpeecher(Speecher)
+        return False
+
+    # check for if we heard Polo
+    try:
+        while Speecher.recognizedWord != "polo":
+            # if we are waiting for x seconds or longer, return False
+            if waitForPolo >= listenForPoloSeconds:
+                break
+
+            print "waitForPolo - Recognized word in wait polo:", Speecher.recognizedWord
+            sleep(0.1)
+            waitForPolo += 0.1
+
+        # # if we are outside the loop, we heard polo or took too long with listening
+        if waitForPolo >= listenForPoloSeconds:
+            heardPolo = False
+        else:
+            heardPolo = True
+    except:
+        "waitForPolo - error"
+    finally:
+        Speecher.stop()
+
+
+    # return true or false depending on if we heard Polo
+    if not heardPolo:
+        print "waitForPolo - Waiting too long, return false in waitPolo"
+        return False
+
+    print "waitForPolo - heard polo"
+    return True
+
+
+# do the countdown
+def countDown():
+    say("I am going to start counting down!")
+
+    # rotate facing the wall
+    motionProxy.moveTo(0, 0, math.pi)
+    sleep(2.0)
+    # TODO: Put hands before eyes
+
+    say("Five")
+    sleep(1)
+    say("Four")
+    sleep(1)
+    say("Three")
+    sleep(1)
+    say("Two")
+    sleep(1)
+    say("One")
+    sleep(2.0)
+    say("Here I come!")
+
+    # Turn around and go to default position
+    postureProxy.goToPosture("Stand", 0.6667)
+    motionProxy.moveTo(0, 0, math.pi)
+    sleep(2.0)
+
+
+# Set the face leds according to the irritation level of Pepper, and
+# check if the irritation has passed the threshold
+def angerManagment(pissedOffFactor):
+    print "angerManagment - pissedOffFactor is ", pissedOffFactor
+
+    # return true
+    if pissedOffFactor > pepperPissedOffThreshold:
+        print "angerManagment - Pepper is pissed off"
+        # NOTE: we need to set the LEDS a couple times otherwise they are not
+        # set. This is a bug in Naoqi I think
+        setEyeLeds("red", pissedOffFactor * 0.1)
+        setEyeLeds("red", pissedOffFactor * 0.1)
+        setEyeLeds("red", pissedOffFactor * 0.1)
+        return True
+
+    # colour the face leds of Pepper if he gets irritated
+    elif pissedOffFactor > pepperIritationThreshold:
+        print "angerManagment - Pepper is irritated, set eye colours"
+        # NOTE: we need to set the LEDS a couple times otherwise they are not
+        # set. This is a bug in Naoqi I think
+        setEyeLeds("red", pissedOffFactor * 0.1)
+        setEyeLeds("red", pissedOffFactor * 0.1)
+        setEyeLeds("red", pissedOffFactor * 0.1)
+
+    return False
+
+
+# TODO: cheat or throw a tantrum or whatever
+def cheat():
+    print "cheat - cheating in progress"
+
+
 
 ################################################################################
 # I Spy With My Little Eye
@@ -272,7 +440,9 @@ def setup():
     # TODO can you explain why these variables are both global and passed to the processes. shouldn't one of these be enough?
 
     # Set robot to default posture
+    setEyeLeds("none", 0.6)
     postureProxy.goToPosture("Stand", 0.6667)
+
     # TODO we have the pythonbroker now at three locations. make it generally defined in top?
     pythonBroker = ALBroker("pythonBroker","0.0.0.0", 9600, ip, port)
 
@@ -284,7 +454,7 @@ def setup():
     ballLocated = manager.Value('i', False)
     mainQueue = multiprocessing.Queue()
     azimuth = manager.Value('i', 0)
-    exitProcess = manager.Value('i', False)
+    exitProcess = manager.Value('i', 0)
     wonGame = manager.Value('i', False)
 
     # extra threads
@@ -354,7 +524,7 @@ def main():
             sleep(0.1)
             end = time.time()
 
-        ReactToTouch.unsubscribe()
+        ReactToTouch.unsubscribeTouch()
         say("Thank you for playing, I had a lot of fun!")
         say("I hope we can play again sometime.")
         say("Bye!")
@@ -365,7 +535,7 @@ def main():
         print "Unexpected error:", sys.exc_info()[0] , ": ", str(e)
     finally:
         say("I am now shutting down.")
-        exitProcess.value = True
+        # exitProcess.value = True
         sleep(1.0)
         # rest
         postureProxy.goToPosture("Crouch", 0.6667)
