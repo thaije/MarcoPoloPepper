@@ -155,6 +155,8 @@ def runMarcoPolo(queue, azimuth, exitProcess, wonGame):
     say("And you respond with Polo!")
 
     SoundLocalization = SoundLocalization("SoundLocalization", memory)
+    Speecher = SpeechRecognition("Speecher", memory)
+    Speecher.getSpeech(["marco", "polo"], True)
 
     pissedOffFactor = 0
     nextAzimuth = 0
@@ -164,11 +166,17 @@ def runMarcoPolo(queue, azimuth, exitProcess, wonGame):
 
     try:
         while True:
+            # print "recognizedWord:", Speecher.recognizedWord
+            # if Speecher.recognizedWord != "polo":
+            #     Speecher.recognizedWord = False
+            # sleep(0.5)
+            # continue
+
             # Get a reply from the other person
             print "getPolo first time"
             getPolo = waitForPolo()
             while not getPolo:
-                print "In getPolo loop, getPolo"
+                print "Didn't get a response, shout Marco again"
 
                 # # check how pissed off Pepper is because off people ignoring him
                 if angerManagment(pissedOffFactor):
@@ -183,13 +191,14 @@ def runMarcoPolo(queue, azimuth, exitProcess, wonGame):
             # Set the eyes LED colours according to his pissed off factor, and
             # cheat if Pepper is tired of your games
             if angerManagment(pissedOffFactor):
-                say("I can't find you. I quit")
+                tts.say("I can't find you. I quit")
                 print "runMarcoPolo - Pepper is pissed off and will cheat"
                 # TODO: cheat
                 cheat()
                 break
 
             print "runMarcoPolo - I heard Polo"
+            Speecher.RecognizedWord = False
 
             print "Energy is:", SoundLocalization.energy
 
@@ -204,8 +213,8 @@ def runMarcoPolo(queue, azimuth, exitProcess, wonGame):
             #     #     break
 
             # Save the location of the speaker, and rotate to them
-            print "Azimuth of speaker is:" , nextAzimuth
             nextAzimuth = SoundLocalization.azimuth
+            print "Azimuth of speaker is:" , nextAzimuth
             rotateToVoice(nextAzimuth)
 
             # TODO: drive towards voice
@@ -222,64 +231,46 @@ def runMarcoPolo(queue, azimuth, exitProcess, wonGame):
         pass
     finally:
         print name, " Exiting"
-        # Speecher.stop()
+        Speecher.stop()
         pythonBroker.shutdown()
 
 
-def quitSpeecher(Speecher):
-    try:
-        Speecher.stop()
-    except:
-        pass
 
 # Say Marco, and wait for max x seconds for a Polo reply from the other speaker
 def waitForPolo():
-
     global Speecher
     waitForPolo = 0
     heardPolo = False
 
     tts.say("Marco?")
-    sleep(0.5)
+    sleep(1.5)
     waitForPolo += 0.5
-
-    # start speech recognition
-    try:
-        Speecher = SpeechRecognition("Speecher", memory)
-        Speecher.getSpeech(["stop", "marco", "polo"], True)
-        Speecher.RecognizedWord = False
-    except:
-        quitSpeecher(Speecher)
-        return False
+    Speecher.recognizedWord = False
 
     # check for if we heard Polo
-    try:
-        while Speecher.recognizedWord != "polo":
-            # if we are waiting for x seconds or longer, return False
-            if waitForPolo >= listenForPoloSeconds:
-                break
-
-            print "waitForPolo - Recognized word in wait polo:", Speecher.recognizedWord
-            sleep(0.1)
-            waitForPolo += 0.1
-
-        # # if we are outside the loop, we heard polo or took too long with listening
+    # print "waitForPolo - Recognized word in wait polo:", Speecher.recognizedWord
+    while Speecher.recognizedWord != "polo":
+        # if we are waiting for x seconds or longer, return False
         if waitForPolo >= listenForPoloSeconds:
-            heardPolo = False
-        else:
-            heardPolo = True
-    except:
-        "waitForPolo - error"
-    finally:
-        Speecher.stop()
+            break
+
+        # print "waitForPolo - Recognized word in wait polo:", Speecher.recognizedWord
+        sleep(0.1)
+        waitForPolo += 0.1
+
+    # # if we are outside the loop, we heard polo or took too long with listening
+    if waitForPolo >= listenForPoloSeconds:
+        heardPolo = False
+    else:
+        heardPolo = True
 
 
     # return true or false depending on if we heard Polo
     if not heardPolo:
-        print "waitForPolo - Waiting too long, return false in waitPolo"
+        print "waitForPolo - Waiting too long, return false in waitPolo\n"
         return False
 
-    print "waitForPolo - heard polo"
+    print "waitForPolo - heard polo\n"
     return True
 
 
