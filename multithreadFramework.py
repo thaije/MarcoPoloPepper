@@ -25,7 +25,6 @@ try:
     tts = ALProxy("ALTextToSpeech", ip , port )
     memory = ALProxy("ALMemory", ip, port)
     LED = ALProxy("ALLeds", ip, port)
-    # navigationProxy = ALProxy("ALNavigationProxy")
     pythonBroker = False
 except Exception, e:
     print "could not create all proxies"
@@ -65,8 +64,15 @@ def rotateToVoice(azimu):
 def setEyeLeds(colour, intensity):
     if colour == "red":
         LED.fadeRGB('FaceLeds', intensity, 0, 0, 0.5)
-    if colour == "none":
+    elif colour == "blue":
+        LED.fadeRGB('FaceLeds', 0, 0, intensity, 0.5)
+    elif colour == "green":
+        LED.fadeRGB('FaceLeds', 0, intensity, 0, 0.5)
+    elif colour == "none":
         LED.fadeRGB('FaceLeds', intensity, intensity, intensity, 0.5)
+    else:
+        print "Sorry, I don't know that colour"
+
 
 
 ################################################################################
@@ -140,7 +146,6 @@ def detectBallProcess(ballLocation, ballLocated, ballColour):
 ################################################################################
 # Marco Polo
 ################################################################################
-# TODO ik heb een wonGame variabele gemaakt, maar ik denk dat die dezelfde functie heeft als jouw exitProcess? kijk er vooral even naar :)
 def runMarcoPolo(queue, azimuth, exitProcess, wonGame):
     global SoundLocalization, Speecher
     pythonBroker = ALBroker("pythonBroker","0.0.0.0", 9600, ip, port)
@@ -202,15 +207,16 @@ def runMarcoPolo(queue, azimuth, exitProcess, wonGame):
 
             print "Energy is:", SoundLocalization.energy
 
-            # # check how close we are to the other person
-            # if SoundLocalization.energy > 0.15:
-            #     tts.say("You sound really close, I think I found you!")
-            #
-            #     # TODO: Do grabbing motion forwards / face recognition to check if won?
-            #     # check to see if we can find a face closeby, if true we won
-            #     # if faceTracking returns true:
-            #     #     queue.put(True)
-            #     #     break
+            # check how close we are to the other person
+            if SoundLocalization.energy > 0.20:
+                tts.say("You sound really close, I think I found you!")
+                wonGame.value = True
+                break
+                # TODO: Do grabbing motion forwards / face recognition to check if won?
+                # check to see if we can find a face closeby, if true we won
+                # if faceTracking returns true:
+                #     queue.put(True)
+                #     break
 
             # Save the location of the speaker, and rotate to them
             nextAzimuth = SoundLocalization.azimuth
@@ -359,7 +365,7 @@ def runLittleSpy(ballLocation, ballLocated, wonGame):
     sleep(1)
 
     # decide on the colours of the balls
-    ballColours = ["pink" "red" "blue" "yellow" "orange" "green" "white"]
+    ballColours = ["pink", "red", "blue", "yellow", "orange", "green", "white"]
     Speecher = SpeechRecognition("Speecher", memory)
 
     for i in range(0,1): # every round do
@@ -381,6 +387,8 @@ def runLittleSpy(ballLocation, ballLocated, wonGame):
 
         say("I will look for a ball that is " + ballColour)
         # TODO make eyeleds same colour as the ball we are looking for? or too much effort for too little reward? :p
+        # NOTE: Done :)
+        setEyeLeds(ballColour, 1.0)
 
         # look for the fucking ball, boyeah
         ballDetectionProcess = multiprocessing.Process(name="ball-detection-proc", target=detectBallProcess,
@@ -426,9 +434,11 @@ def setup():
     global pythonBroker
     # add threads here
     global marcoPolo, littleSpy
-    # add thread variables here
+    # add thread variables here which you also need in main()
     global mainQueue, azimuth, exitProcess, wonGame
     # TODO can you explain why these variables are both global and passed to the processes. shouldn't one of these be enough?
+    # NOTE: answer is that they are created in setup(), and you may also want to call them in main(), which is a different function in the
+    # same thread. So you can't access them from there if they are not global. Was mainly for debugging, don't think that it is needed right now anymore
 
     # Set robot to default posture
     setEyeLeds("none", 0.6)
