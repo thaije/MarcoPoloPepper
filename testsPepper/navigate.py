@@ -8,9 +8,9 @@ postureProxy = ALProxy("ALRobotPosture", ip ,port )
 navigationProxy = ALProxy("ALNavigation", ip, port)
 
 
-postureProxy.goToPosture("Stand", 0.6667)
+# postureProxy.goToPosture("Stand", 0.6667)
 
-#
+
 # if( navigationProxy.navigateTo(2.0, 0) ):
 #     print "succes"
 # else:
