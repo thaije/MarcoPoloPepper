@@ -40,10 +40,10 @@ def findBall(image):
 
     # image = cv2.imread("ballimage.png")
 
-    # lower_blue = np.array([70,50,50], dtype=np.uint8)
-    # upper_blue = np.array([170, 255, 255], dtype=np.uint8)
-    lower_blue = np.array([110,50,50], dtype=np.uint8)
-    upper_blue = np.array([130, 255, 255], dtype=np.uint8)
+    lower_blue = np.array([70,50,50], dtype=np.uint8)
+    upper_blue = np.array([170, 255, 255], dtype=np.uint8)
+    # lower_blue = np.array([110,50,50], dtype=np.uint8)
+    # upper_blue = np.array([130, 255, 255], dtype=np.uint8)
 
 
     hsvImage = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
@@ -59,7 +59,7 @@ def findBall(image):
     kernel = np.ones((9,9), np.uint8)
 
     opening = cv2.morphologyEx(color_mask, cv2.MORPH_OPEN, kernel)
-    closing = cv2.morphologyEx(color_mask, cv2.MORPH_CLOSE, kernel)
+    closing = cv2.morphologyEx(opening, cv2.MORPH_CLOSE, kernel)
 
     smoothed_mask = cv2.GaussianBlur(closing, (9,9), 0)
 
