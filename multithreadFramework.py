@@ -439,7 +439,7 @@ def runLittleSpy(ballLocation, ballLocated, wonGame):
                     break
                 else:
                     say("Okay, I will continue my search for a " + ballColour + " ball.")
-            # ballDetectionProcess.terminate()
+            ballDetectionProcess.terminate()
     except Exception, e:
         # print "runLittleSpy - Unexpected error:", sys.exc_info()[0] , ": ", str(e)
         exc_type, exc_obj, exc_tb = sys.exc_info()
