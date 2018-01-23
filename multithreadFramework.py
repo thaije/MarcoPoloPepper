@@ -404,17 +404,16 @@ def runLittleSpy(ballLocation, ballLocated, wonGame):
             # look for the fucking ball, boyeah
             ballDetectionProcess = multiprocessing.Process(name="ball-detection-proc", target=detectBallProcess,
                                                            args=(ballLocation, ballLocated, ballColour,))
+            ballDetectionProcess.start()
 
             Speecher.recognizedWord = False
             correct = False # start with False
             while not correct:
                 # TODO this is a thread started in a thread, is that okay?? needs checking
-                ballDetectionProcess.start()
-                while not ballLocated:
+                while not ballLocated.value:
                     # TODO while you haven't found the ball, look and turn around and check for balls
                     sleep(0.1)
 
-                ballDetectionProcess.terminate()
                 say("Is it that ball?")
                 # TODO also point at the ball?
 
@@ -437,7 +436,7 @@ def runLittleSpy(ballLocation, ballLocated, wonGame):
                     break
                 else:
                     say("Okay, I will continue my search for a " + ballColour + " ball.")
-                break
+            ballDetectionProcess.terminate()
     except Exception, e:
         # print "runLittleSpy - Unexpected error:", sys.exc_info()[0] , ": ", str(e)
         exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -449,7 +448,7 @@ def runLittleSpy(ballLocation, ballLocated, wonGame):
         print "Error"
         pass
     finally:
-        wonGame = True
+        wonGame.value = True
         print name, " Exiting"
         try:
             Speecher.stop()
@@ -468,7 +467,7 @@ def setup():
 
     # Set robot to default posture
     setEyeLeds("none", 0.6)
-    # postureProxy.goToPosture("Stand", 0.6667)
+    postureProxy.goToPosture("Stand", 0.6667)
 
     say("Initializing threads")
 
@@ -505,7 +504,7 @@ def main():
 
         while end - start < duration:
             # make sure wonGame is always False when starting a new round!
-            wonGame = False
+            wonGame.value = False
             if ReactToTouch.parts != []:
                 print 'touched bodyparts are: \n', ReactToTouch.parts
                 parts = ReactToTouch.parts
@@ -540,7 +539,7 @@ def main():
 
                         littleSpy.start()
 
-                        while not wonGame:
+                        while not wonGame.value:
                             sleep(0.5)
                         littleSpy.join()
 

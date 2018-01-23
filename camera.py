@@ -32,7 +32,7 @@ def setupCamera(ip, port):
     return videoProxy, cam
 
 
-def findBall(image, ballColour="blue"): # default ballcolour to recognize is blue
+def findBall(image, ballColour="pink"): # default ballcolour to recognize is blue
 
     ###################################
     # Apply a threshold
@@ -44,7 +44,7 @@ def findBall(image, ballColour="blue"): # default ballcolour to recognize is blu
     # ballColours = ["pink" "red" "blue" "yellow" "orange" "green" "white"]
     if ballColour == "pink": # TODO check colour ranges!!
         lower_colour = np.array([100,0,100], dtype=np.uint8)
-        upper_colour = np.array([255, 0, 255], dtype=np.uint8)
+        upper_colour = np.array([255, 150, 255], dtype=np.uint8)
     elif ballColour == "green":
         lower_colour = np.array([0, 252, 127], dtype=np.uint8)
         upper_colour = np.array([47, 255, 173], dtype=np.uint8)
@@ -55,8 +55,8 @@ def findBall(image, ballColour="blue"): # default ballcolour to recognize is blu
         lower_colour = np.array([0, 0, 255], dtype=np.uint8)
         upper_colour = np.array([122, 160, 255], dtype=np.uint8)
     elif ballColour == "blue":
-        lower_colour = np.array([110, 50, 50], dtype=np.uint8)
-        upper_colour = np.array([130, 255, 255], dtype=np.uint8)
+        lower_colour = np.array([70, 50, 50], dtype=np.uint8)
+        upper_colour = np.array([170, 255, 255], dtype=np.uint8)
     else: # default is blue balls
         lower_colour = np.array([110, 50, 50], dtype=np.uint8)
         upper_colour = np.array([130, 255, 255], dtype=np.uint8)
