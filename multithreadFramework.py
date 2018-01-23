@@ -202,6 +202,7 @@ def runMarcoPolo(queue, azimuth, exitProcess, wonGame):
             # cheat if Pepper is tired of your games
             if angerManagment(pissedOffFactor):
                 tts.say("I can't find you. I quit")
+                wonGame.value = False
                 print "runMarcoPolo - Pepper is pissed off and will cheat"
                 # TODO: cheat
                 cheat()
