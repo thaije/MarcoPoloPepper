@@ -126,18 +126,21 @@ def detectBallProcess(ballLocation, ballLocated, ballColour):
 
     try:
         while True:
+
             # get and process a camera frame
             image = camera.getFrame(videoProxy, cam)
+
+
             if image is not False:
                 # Check if we can find a ball, and point the head towards it if so
                 ballDet = camera.findBall(image, ballColour)
 
                 if ballDet != False:
-                    ballLocated.value = True
+                    ballLocated.value = 1
                     centerOnBall(ballDet, ballLocation)
                     print "Ball detected"
                 else:
-                    ballLocated.value = False
+                    ballLocated.value = 0
                     print "No ball detected"
 
                 if cv2.waitKey(33) == 27:
@@ -393,6 +396,7 @@ def runLittleSpy(ballLocation, ballLocated, wonGame):
             while not ballColourDecided:
                 if Speecher.recognizedWord in ballColours: #default is False
                     ballColour = Speecher.recognizedWord
+
                     Speecher.recognizedWord = False
                     ballColourDecided = True
                 sleep(0.5)
@@ -403,22 +407,21 @@ def runLittleSpy(ballLocation, ballLocated, wonGame):
             # look for the fucking ball, boyeah
             ballDetectionProcess = multiprocessing.Process(name="ball-detection-proc", target=detectBallProcess,
                                                            args=(ballLocation, ballLocated, ballColour,))
+            ballDetectionProcess.start()
 
             Speecher.recognizedWord = False
             correct = False # start with False
             while not correct:
                 # TODO this is a thread started in a thread, is that okay?? needs checking
-                ballDetectionProcess.start()
-                while not ballLocated:
+                while not ballLocated.value:
                     # TODO while you haven't found the ball, look and turn around and check for balls
                     sleep(0.1)
+                print "after ballLocated"
 
-                ballDetectionProcess.terminate()
                 say("Is it that ball?")
                 # TODO also point at the ball?
 
                 # listen for the answer and classify it as right or wrong
-                # Speecher.getSpeech(["yes", "no", "correct", "wrong"], True)
                 while True:
                     if Speecher.recognizedWord in otherWords:
                         word = Speecher.recognizedWord
@@ -436,6 +439,7 @@ def runLittleSpy(ballLocation, ballLocated, wonGame):
                     break
                 else:
                     say("Okay, I will continue my search for a " + ballColour + " ball.")
+            # ballDetectionProcess.terminate()
     except Exception, e:
         # print "runLittleSpy - Unexpected error:", sys.exc_info()[0] , ": ", str(e)
         exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -447,20 +451,20 @@ def runLittleSpy(ballLocation, ballLocated, wonGame):
         print "Error"
         pass
     finally:
+        wonGame.value = True
         print name, " Exiting"
         try:
             Speecher.stop()
         except:
             pass
 
-
 ################################################################################
 # Main functions
 ################################################################################
 def setup():
-    global marcoPolo, littleSpy
+    global marcoPolo, littleSpy, ballLocation
     # add thread variables here which you also need in main()
-    global mainQueue, azimuth, wonGame
+    global mainQueue, azimuth, wonGame, ballLocated
     # NOTE: answer is that they are created in setup(), and you may also want to call them in main(), which is a different function in the
     # same thread. So you can't access them from there if they are not global. Was mainly for debugging, don't think that it is needed right now anymore
 
@@ -473,7 +477,7 @@ def setup():
     # multithread variables
     manager = multiprocessing.Manager()
     ballLocation = manager.Value('i', -1)
-    ballLocated = manager.Value('i', False)
+    ballLocated = manager.Value('i', 0)
     mainQueue = multiprocessing.Queue()
     azimuth = manager.Value('i', 0)
     wonGame = manager.Value('i', False)
@@ -503,7 +507,7 @@ def main():
 
         while end - start < duration:
             # make sure wonGame is always False when starting a new round!
-            wonGame = False
+            wonGame.value = False
             if ReactToTouch.parts != []:
                 print 'touched bodyparts are: \n', ReactToTouch.parts
                 parts = ReactToTouch.parts
@@ -537,6 +541,10 @@ def main():
                         say("lets have some fun!")
 
                         littleSpy.start()
+
+                        while not wonGame.value:
+                            sleep(0.5)
+                        littleSpy.join()
 
                         ReactToTouch.subscribeTouch()
                         break # don't check other parts if you have already found a part
