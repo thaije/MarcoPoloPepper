@@ -7,6 +7,7 @@ from naoqi import ALModule, ALProxy, ALBroker
 from ReactToTouch import *
 from SoundLocalization import SoundLocalization
 from wordSpotting import SpeechRecognition
+from postures import *
 
 # general variables
 ip = "192.168.1.115"
@@ -25,7 +26,8 @@ try:
     tts = ALProxy("ALTextToSpeech", ip , port )
     memory = ALProxy("ALMemory", ip, port)
     LED = ALProxy("ALLeds", ip, port)
-    pythonBroker = False
+    pythonBroker = ALBroker("pythonBroker","0.0.0.0", 9600, ip, port)
+    navigationProxy = ALProxy("ALNavigation", ip, port)
 except Exception, e:
     print "could not create all proxies"
     print "error was ", e
@@ -148,28 +150,27 @@ def detectBallProcess(ballLocation, ballLocated, ballColour):
 ################################################################################
 def runMarcoPolo(queue, azimuth, exitProcess, wonGame):
     global SoundLocalization, Speecher
-    pythonBroker = ALBroker("pythonBroker","0.0.0.0", 9600, ip, port)
+    # pythonBroker = ALBroker("pythonBroker","0.0.0.0", 9600, ip, port)
     name = multiprocessing.current_process().name
     print name, " Starting"
 
     print 'running marco polo'
     say("The rules are as follows")
     say("First you hide somewhere in the room.")
-    say("I am still learning so don't make it too difficult please.")
     say("I call Marco")
     say("And you respond with Polo!")
 
-    SoundLocalization = SoundLocalization("SoundLocalization", memory)
-    Speecher = SpeechRecognition("Speecher", memory)
-    Speecher.getSpeech(["marco", "polo"], True)
-
-    pissedOffFactor = 0
-    nextAzimuth = 0
-    sleep(2.0)
-
-    # countDown()
-
     try:
+        SoundLocalization = SoundLocalization("SoundLocalization", memory)
+        Speecher = SpeechRecognition("Speecher", memory)
+        Speecher.getSpeech(["marco", "polo"], True)
+
+        pissedOffFactor = 0
+        nextAzimuth = 0
+        sleep(2.0)
+
+        # countDown()
+
         while True:
             # print "recognizedWord:", Speecher.recognizedWord
             # if Speecher.recognizedWord != "polo":
@@ -204,11 +205,17 @@ def runMarcoPolo(queue, azimuth, exitProcess, wonGame):
 
             print "runMarcoPolo - I heard Polo"
             Speecher.RecognizedWord = False
+            say("I heard you!")
 
-            print "Energy is:", SoundLocalization.energy
+            # Save the location of the speaker, and rotate to them
+            nextAzimuth = SoundLocalization.azimuth
+            print "Azimuth of speaker is:" , nextAzimuth
+            rotateToVoice(nextAzimuth)
+
 
             # check how close we are to the other person
-            if SoundLocalization.energy > 0.20:
+            print "Energy is:", SoundLocalization.energy
+            if SoundLocalization.energy > 0.18:
                 tts.say("You sound really close, I think I found you!")
                 wonGame.value = True
                 break
@@ -218,12 +225,12 @@ def runMarcoPolo(queue, azimuth, exitProcess, wonGame):
                 #     queue.put(True)
                 #     break
 
-            # Save the location of the speaker, and rotate to them
-            nextAzimuth = SoundLocalization.azimuth
-            print "Azimuth of speaker is:" , nextAzimuth
-            rotateToVoice(nextAzimuth)
 
-            # TODO: drive towards voice
+            # Move towards the person and avoid objects along the way
+            if( navigationProxy.navigateTo(1.5, 0) ):
+                print "succes"
+            else:
+                say("This way is blocked")
 
             # Pepper gets pissed off more with each iteration it can't find you or doesn't get a reply
             pissedOffFactor += 1
@@ -287,7 +294,7 @@ def countDown():
     # rotate facing the wall
     motionProxy.moveTo(0, 0, math.pi)
     sleep(2.0)
-    # TODO: Put hands before eyes
+    coverEyesPosture()
 
     say("Five")
     sleep(1)
@@ -298,11 +305,10 @@ def countDown():
     say("Two")
     sleep(1)
     say("One")
-    sleep(2.0)
-    say("Here I come!")
+    sleep(1)
 
-    # Turn around and go to default position
     postureProxy.goToPosture("Stand", 0.6667)
+    say("Here I come!")
     motionProxy.moveTo(0, 0, math.pi)
     sleep(2.0)
 
