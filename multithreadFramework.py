@@ -1,4 +1,4 @@
-import multiprocessing, Queue, signal, sys, random, cv2, math
+import multiprocessing, Queue, signal, sys, random, cv2, math, os
 import time
 import camera
 from time import sleep
@@ -200,6 +200,7 @@ def runMarcoPolo(queue, azimuth, wonGame):
             # cheat if Pepper is tired of your games
             if angerManagment(pissedOffFactor):
                 tts.say("I can't find you. I quit")
+                wonGame.value = False
                 print "runMarcoPolo - Pepper is pissed off and will cheat"
                 # TODO: cheat
                 cheat()
@@ -359,6 +360,9 @@ def cheat():
 # Provide another hint if necessary. ...
 # Let the player who guesses correctly become the next spy.
 def runLittleSpy(ballLocation, ballLocated, wonGame):
+    global Speecher
+    name = multiprocessing.current_process().name
+
     # give instructions to the game
     say("We are playing I spy with my little eye")
     say("These are the rules")
@@ -373,64 +377,84 @@ def runLittleSpy(ballLocation, ballLocated, wonGame):
 
     # decide on the colours of the balls
     ballColours = ["pink", "red", "blue", "yellow", "green"]
+    otherWords = ["yes", "no", "correct", "wrong"]
+    allWords = ballColours + otherWords
     Speecher = SpeechRecognition("Speecher", memory)
+    Speecher.getSpeech(allWords, True)
 
-    for i in range(0,1): # every round do
-        say("this is round " + str(i))
-        say("Pick a ball and name its colour")
-        ballColourDecided = False
-        ballColour = ""
+    try:
+        for i in range(0,1): # every round do
+            say("this is round " + str(i))
+            say("Pick a ball")
+            ballColourDecided = False
+            ballColour = ""
 
-        Speecher.getSpeech(ballColours, True)
-        # decide on the ballcolour to find!
-        while not ballColourDecided:
-            if Speecher.recognizedWord is not False: #default is False
-                ballColour = Speecher.recognizedWord
-                Speecher.recognizedWord = False
-                ballColourDecided = True
-                Speecher.stop() # stop listening for the colour to detect
-            sleep(0.5)
+            # decide on the ballcolour to find!
+            while not ballColourDecided:
+                if Speecher.recognizedWord in ballColours: #default is False
+                    ballColour = Speecher.recognizedWord
 
-        say("I will look for a ball that is " + ballColour)
-        setEyeLeds(ballColour, 1.0)
-
-        # look for the fucking ball, boyeah
-        ballDetectionProcess = multiprocessing.Process(name="ball-detection-proc", target=detectBallProcess,
-                                                       args=(ballLocation, ballLocated, ballColour,))
-
-        correct = False # you have not found the correct ball yet
-        while not correct:
-            # TODO this is a thread started in a thread, is that okay?? needs checking
-            ballDetectionProcess.start()
-            while not ballLocated:
-                # TODO while you haven't found the ball, look and turn around and check for balls
-                sleep(0.1)
-
-            ballDetectionProcess.terminate()
-            say("Is it that ball?")
-            # TODO also point at the ball?
-
-            # listen for the answer and classify it as right or wrong
-            Speecher.getSpeech(["yes", "no", "correct", "wrong"], True)
-            while True:
-                if Speecher.recognizedWord is not False:
-                    word = Speecher.recognizedWord
                     Speecher.recognizedWord = False
-                    Speecher.stop()
-                    if word == "true" or word == "correct":
-                        correct = True
-                    elif word == "no" or word == "wrong":
-                        correct = False
+                    ballColourDecided = True
+                sleep(0.5)
+
+            say("I will look for a ball that is " + ballColour)
+            setEyeLeds(ballColour, 1.0)
+
+            # look for the fucking ball, boyeah
+            ballDetectionProcess = multiprocessing.Process(name="ball-detection-proc", target=detectBallProcess,
+                                                           args=(ballLocation, ballLocated, ballColour,))
+
+            Speecher.recognizedWord = False
+            correct = False # start with False
+            while not correct:
+                # TODO this is a thread started in a thread, is that okay?? needs checking
+                ballDetectionProcess.start()
+                while not ballLocated:
+                    # TODO while you haven't found the ball, look and turn around and check for balls
+                    sleep(0.1)
+
+                ballDetectionProcess.terminate()
+                say("Is it that ball?")
+                # TODO also point at the ball?
+
+                # listen for the answer and classify it as right or wrong
+                # Speecher.getSpeech(["yes", "no", "correct", "wrong"], True)
+                while True:
+                    if Speecher.recognizedWord in otherWords:
+                        word = Speecher.recognizedWord
+                        Speecher.recognizedWord = False
+                        if word == "yes" or word == "correct":
+                            correct = True
+                        elif word == "no" or word == "wrong":
+                            correct = False
+                        break
+                    sleep(0.5)
+
+                if correct:
+                    say("yay!")
+                    say("This is the end of the first round.")
                     break
-
-            if correct:
-                say("yay!")
-                say("This is the end of the first round.")
+                else:
+                    say("Okay, I will continue my search for a " + ballColour + " ball.")
                 break
-            else:
-                say("Okay, I will continue my search for a " + ballColour + " ball.")
-    wonGame = True
-
+    except Exception, e:
+        # print "runLittleSpy - Unexpected error:", sys.exc_info()[0] , ": ", str(e)
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+        print "runLittleSpy - Unexpected error:", sys.exc_info()[0] , ": ", str(e)
+        print(exc_type, fname, exc_tb.tb_lineno)
+        pass
+    except:
+        print "Error"
+        pass
+    finally:
+        wonGame = True
+        print name, " Exiting"
+        try:
+            Speecher.stop()
+        except:
+            pass
 
 ################################################################################
 # Main functions
@@ -444,7 +468,7 @@ def setup():
 
     # Set robot to default posture
     setEyeLeds("none", 0.6)
-    postureProxy.goToPosture("Stand", 0.6667)
+    # postureProxy.goToPosture("Stand", 0.6667)
 
     say("Initializing threads")
 
@@ -540,7 +564,7 @@ def main():
         say("I am now shutting down.")
         sleep(1.0)
         # rest
-        postureProxy.goToPosture("Crouch", 0.6667)
+        # postureProxy.goToPosture("Crouch", 0.6667)
         motionProxy.rest()
         pythonBroker.shutdown()
         # stop threads
