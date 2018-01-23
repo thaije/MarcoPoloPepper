@@ -97,7 +97,7 @@ def detectBallProcess(ballLocation, ballLocated):
 
                 if cv2.waitKey(33) == 27:
                     videoProxy.unsubscribe(cam)
-                    break;
+                    break
             sleep(0.2)
     except:
         pass
@@ -231,7 +231,7 @@ def setup():
     ballLocated = manager.Value('i', False)
 
     # Set robot to default posture
-    motionProxy.setStiffnesses(["HeadYaw" "HeadPitch"], [0.8, 0.8])
+    #motionProxy.setStiffnesses(["HeadYaw" "HeadPitch"], [0.8, 0.8])
     postureProxy.goToPosture("Stand", 0.6667)
     pythonBroker = ALBroker("pythonBroker","0.0.0.0", 9600, ip, port)
 
@@ -240,7 +240,7 @@ def setup():
     sleep(1)
 
     ballDetectionProcess = multiprocessing.Process(name = "ball-detection-proc", target=detectBallProcess, args=(ballLocation, ballLocated,))
-    volLevelProcess = multiprocessing.Process(name = "volume-measurement-proc", target=volumeLevel, args=(audioVolume,))
+    #volLevelProcess = multiprocessing.Process(name = "volume-measurement-proc", target=volumeLevel, args=(audioVolume,))
 
 
 
@@ -262,10 +262,12 @@ def main():
             # announce the location of the ball
             if not ballLocated.value and lastBallLocation:
                 lastBallLocation = False
-                tts.say("I lost the ball")
+                # tts.say("I lost the ball")
+                print("lost ball")
             elif ballLocated.value and lastBallLocation != ballLocation.value:
-                lastBallLocation = ballLocation.value;
-                tts.say("I see the ball " + ballLocation.value)
+                lastBallLocation = ballLocation.value
+                print "I see the ball ", ballLocation.value
+                #tts.say("I see the ball " + ballLocation.value)
 
             # # determine eye led colour
             # if not ballLocated.value:
@@ -290,11 +292,11 @@ def main():
         print "Unexpected error:", sys.exc_info()[0] , ": ", str(e)
     finally:
         print "Shutting down"
-        postureProxy.goToPosture("Crouch", 0.6667)
-        motionProxy.rest()
+        #postureProxy.goToPosture("Crouch", 0.6667)
+        #motionProxy.rest()
         videoProxy.unsubscribe(cam)
         ballDetectionProcess.terminate()
-        volLevelProcess.terminate()
+        #volLevelProcess.terminate()
         pythonBroker.shutdown()
         sys.exit(0)
 
