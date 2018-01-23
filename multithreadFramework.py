@@ -68,6 +68,10 @@ def setEyeLeds(colour, intensity):
         LED.fadeRGB('FaceLeds', 0, 0, intensity, 0.5)
     elif colour == "green":
         LED.fadeRGB('FaceLeds', 0, intensity, 0, 0.5)
+    elif colour == "pink":
+        LED.fadeRGB('FaceLeds', intensity, 0.01, 0.58, 0.5)
+    elif colour == "yellow":
+        LED.fadeRGB('FaceLeds', intensity, intensity, 0.0, 0.5)
     elif colour == "none":
         LED.fadeRGB('FaceLeds', intensity, intensity, intensity, 0.5)
     else:
@@ -365,7 +369,7 @@ def runLittleSpy(ballLocation, ballLocated, wonGame):
     sleep(1)
 
     # decide on the colours of the balls
-    ballColours = ["pink", "red", "blue", "yellow", "orange", "green", "white"]
+    ballColours = ["pink", "red", "blue", "yellow", "green"]
     Speecher = SpeechRecognition("Speecher", memory)
 
     for i in range(0,1): # every round do
@@ -375,7 +379,6 @@ def runLittleSpy(ballLocation, ballLocated, wonGame):
         ballColour = ""
 
         Speecher.getSpeech(ballColours, True)
-        # TODO implement check on correct understanding of the colour? say("is this the correct colour") recognize yes/no?
         # decide on the ballcolour to find!
         while not ballColourDecided:
             if Speecher.recognizedWord is not False: #default is False
@@ -386,8 +389,6 @@ def runLittleSpy(ballLocation, ballLocated, wonGame):
             sleep(0.5)
 
         say("I will look for a ball that is " + ballColour)
-        # TODO make eyeleds same colour as the ball we are looking for? or too much effort for too little reward? :p
-        # NOTE: Done :)
         setEyeLeds(ballColour, 1.0)
 
         # look for the fucking ball, boyeah

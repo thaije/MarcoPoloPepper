@@ -42,25 +42,19 @@ def findBall(image, ballColour="blue"): # default ballcolour to recognize is blu
     # upper_blue = np.array([170, 255, 255], dtype=np.uint8)
 
     # ballColours = ["pink" "red" "blue" "yellow" "orange" "green" "white"]
-    if ballColour == "pink": # TODO adjust colour ranges!! now only blue balls are recognized, always!
-        lower_colour = np.array([110,50,50], dtype=np.uint8)
-        upper_colour = np.array([130, 255, 255], dtype=np.uint8)
+    if ballColour == "pink": # TODO check colour ranges!!
+        lower_colour = np.array([100,0,100], dtype=np.uint8)
+        upper_colour = np.array([255, 0, 255], dtype=np.uint8)
     elif ballColour == "green":
-        lower_colour = np.array([110, 50, 50], dtype=np.uint8)
-        upper_colour = np.array([130, 255, 255], dtype=np.uint8)
+        lower_colour = np.array([0, 252, 127], dtype=np.uint8)
+        upper_colour = np.array([47, 255, 173], dtype=np.uint8)
     elif ballColour == "yellow":
-        lower_colour = np.array([110, 50, 50], dtype=np.uint8)
-        upper_colour = np.array([130, 255, 255], dtype=np.uint8)
+        lower_colour = np.array([0, 204, 204], dtype=np.uint8)
+        upper_colour = np.array([204, 255, 255], dtype=np.uint8)
     elif ballColour == "red":
-        lower_colour = np.array([110, 50, 50], dtype=np.uint8)
-        upper_colour = np.array([130, 255, 255], dtype=np.uint8)
+        lower_colour = np.array([0, 0, 255], dtype=np.uint8)
+        upper_colour = np.array([122, 160, 255], dtype=np.uint8)
     elif ballColour == "blue":
-        lower_colour = np.array([110, 50, 50], dtype=np.uint8)
-        upper_colour = np.array([130, 255, 255], dtype=np.uint8)
-    elif ballColour == "white":
-        lower_colour = np.array([110, 50, 50], dtype=np.uint8)
-        upper_colour = np.array([130, 255, 255], dtype=np.uint8)
-    elif ballColour == "orange":
         lower_colour = np.array([110, 50, 50], dtype=np.uint8)
         upper_colour = np.array([130, 255, 255], dtype=np.uint8)
     else: # default is blue balls
