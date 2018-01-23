@@ -377,7 +377,7 @@ def runLittleSpy(ballLocation, ballLocated, wonGame):
 
     for i in range(0,1): # every round do
         say("this is round " + str(i))
-        say("Pick a ball")
+        say("Pick a ball and name its colour")
         ballColourDecided = False
         ballColour = ""
 
@@ -398,7 +398,7 @@ def runLittleSpy(ballLocation, ballLocated, wonGame):
         ballDetectionProcess = multiprocessing.Process(name="ball-detection-proc", target=detectBallProcess,
                                                        args=(ballLocation, ballLocated, ballColour,))
 
-        correct = False # start with False
+        correct = False # you have not found the correct ball yet
         while not correct:
             # TODO this is a thread started in a thread, is that okay?? needs checking
             ballDetectionProcess.start()
@@ -429,6 +429,7 @@ def runLittleSpy(ballLocation, ballLocated, wonGame):
                 break
             else:
                 say("Okay, I will continue my search for a " + ballColour + " ball.")
+    wonGame = True
 
 
 ################################################################################
@@ -514,6 +515,10 @@ def main():
                         say("lets have some fun!")
 
                         littleSpy.start()
+
+                        while not wonGame:
+                            sleep(0.5)
+                        littleSpy.join()
 
                         ReactToTouch.subscribeTouch()
                         break # don't check other parts if you have already found a part
