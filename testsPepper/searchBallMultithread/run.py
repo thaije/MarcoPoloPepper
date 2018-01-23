@@ -231,7 +231,7 @@ def setup():
     ballLocated = manager.Value('i', False)
 
     # Set robot to default posture
-    motionProxy.setStiffnesses("Head", 0.8)
+    motionProxy.setStiffnesses(["HeadYaw" "HeadPitch"], [0.8, 0.8])
     postureProxy.goToPosture("Stand", 0.6667)
     pythonBroker = ALBroker("pythonBroker","0.0.0.0", 9600, ip, port)
 
@@ -253,7 +253,7 @@ def main():
     end = time()
     try:
         ballDetectionProcess.start()
-        volLevelProcess.start()
+        #volLevelProcess.start()
 
         lastBallLocation = False
         eyesColor = "BLUE"
@@ -267,16 +267,16 @@ def main():
                 lastBallLocation = ballLocation.value;
                 tts.say("I see the ball " + ballLocation.value)
 
-            # determine eye led colour
-            if not ballLocated.value:
-                eyesColor = "RED"
-            elif ballLocation.value == "centered":
-                eyesColor = "GREEN"
-            else:
-                eyesColor = "BLUE"
+            # # determine eye led colour
+            # if not ballLocated.value:
+            #     eyesColor = "RED"
+            # elif ballLocation.value == "centered":
+            #     eyesColor = "GREEN"
+            # else:
+            #     eyesColor = "BLUE"
 
-            changeLeds(audioVolume.value, eyesColor)
-            print eyesColor + " eyes with vol ", audioVolume.value, " because ballLocated ", ballLocated.value , " and ballLocation ", ballLocation.value
+            # changeLeds(audioVolume.value, eyesColor)
+            # print eyesColor + " eyes with vol ", audioVolume.value, " because ballLocated ", ballLocated.value , " and ballLocation ", ballLocation.value
 
             # update time
             sleep(0.2)

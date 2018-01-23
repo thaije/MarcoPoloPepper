@@ -272,6 +272,8 @@ def look(direction):
         angles = [[0], [-0.2]]
     elif direction is "down":
         angles = [[0], [0.2]]
+    else:
+        angles = [[0], [0]]
 
     print "Looking ", direction
     motionProxy.angleInterpolation(joints, angles, times, isAbsolute)

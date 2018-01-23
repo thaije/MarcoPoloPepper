@@ -96,6 +96,43 @@ foundBall = False
 videoProxy = False
 cam = False
 
+def turn(theta, direction):
+    # make radians from theta in degrees
+    turnRad = np.radians(theta)
+    # turn in which direction
+    if direction is "left":
+        motionProxy.moveTo(0, 0, turnRad)
+    elif direction is "random":
+        leftRight = random.choice([-1, 1])
+        motionProxy.moveTo(0, 0, turnRad * leftRight)
+    elif direction is "right":
+        print "right direction"
+        motionProxy.moveTo(0, 0, -turnRad)
+
+    motionProxy.stopMove()
+
+# look a relative amount to the current head posture in a certain direction
+def look(direction):
+    joints = ["HeadYaw", "HeadPitch"]
+    isAbsolute = False
+    times = [[0.3], [0.3]] #time in seconds
+
+    # yaw = 0 # left (2) right (-2)
+    # pitch = 0 # up(-0.6) down (0.5)
+    if direction is "right":
+        angles = [[-0.3], [0]]
+    elif direction is "left":
+        angles = [[0.3], [0]]
+    elif direction is "up":
+        angles = [[0], [-0.2]]
+    elif direction is "down":
+        angles = [[0], [0.2]]
+    else:
+        angles = [[0], [0]]
+
+    print "Looking ", direction
+    motionProxy.angleInterpolation(joints, angles, times, isAbsolute)
+
 # Try to center the ball (with a certain threshold)
 def centerOnBall(ballCoords, ballLocation):
     x = ballCoords[0]
@@ -104,20 +141,21 @@ def centerOnBall(ballCoords, ballLocation):
     # -1=not found, 0=centered, 1=top, 2=right, 3=bottom, 4=left
     if x > (resolutionX/2 + ballThreshold):
         ballLocation.value = "right"
-        # look("right")
+        look("right")
     elif x < (resolutionX/2 - ballThreshold):
         ballLocation.value = "left"
-        # look("left")
+        look("left")
     elif y > (resolutionY/2 + ballThreshold):
         ballLocation.value = "down"
-        # look("down")
+        look("down")
     elif y < (resolutionY/2 - ballThreshold):
         ballLocation.value = "up"
+        look("up")
     else:
         ballLocation.value = "centered"
-        # look("up")
+        #look("up")
 
-def detectBallProcess(ballLocation, ballLocated, ballColour):
+def detectBallProcess(ballLocation, ballLocated, ballColour, searchForBalls):
     name = multiprocessing.current_process().name
     print name, " Starting"
 
@@ -126,26 +164,26 @@ def detectBallProcess(ballLocation, ballLocated, ballColour):
 
     try:
         while True:
+            # only look for balls if you want to!
+            if searchForBalls.value:
+                # get and process a camera frame
+                image = camera.getFrame(videoProxy, cam)
 
-            # get and process a camera frame
-            image = camera.getFrame(videoProxy, cam)
+                if image is not False:
+                    # Check if we can find a ball, and point the head towards it if so
+                    ballDet = camera.findBall(image, ballColour)
 
+                    if ballDet != False:
+                        ballLocated.value = 1
+                        centerOnBall(ballDet, ballLocation)
+                        print "Ball detected"
+                    else:
+                        ballLocated.value = 0
+                        print "No ball detected"
 
-            if image is not False:
-                # Check if we can find a ball, and point the head towards it if so
-                ballDet = camera.findBall(image, ballColour)
-
-                if ballDet != False:
-                    ballLocated.value = 1
-                    centerOnBall(ballDet, ballLocation)
-                    print "Ball detected"
-                else:
-                    ballLocated.value = 0
-                    print "No ball detected"
-
-                if cv2.waitKey(33) == 27:
-                    videoProxy.unsubscribe(cam)
-                    break
+            if cv2.waitKey(33) == 27:
+                videoProxy.unsubscribe(cam)
+                break
             sleep(0.2)
     except:
         videoProxy.unsubscribe(cam)
@@ -354,6 +392,7 @@ def cheat():
 ################################################################################
 # I Spy With My Little Eye
 ################################################################################
+# Original rules:
 # Choose the players. ...
 # Select the first spy. ...
 # Pick an object. ...
@@ -362,7 +401,7 @@ def cheat():
 # Let each player guess. ...
 # Provide another hint if necessary. ...
 # Let the player who guesses correctly become the next spy.
-def runLittleSpy(ballLocation, ballLocated, wonGame):
+def runLittleSpy(ballLocation, ballLocated, wonGame, searchForBalls):
     global Speecher
     name = multiprocessing.current_process().name
 
@@ -374,7 +413,7 @@ def runLittleSpy(ballLocation, ballLocated, wonGame):
     say("Then I will try to find the ball you picked")
     say("When I pick the wrong ball, you say WRONG!")
     say("When I have found the right ball, you say CORRECT!")
-    say("We will play this game for three rounds.")
+    say("We will play this game for one round.")
     say("I hope you are ready!")
     sleep(1)
 
@@ -386,15 +425,16 @@ def runLittleSpy(ballLocation, ballLocated, wonGame):
     Speecher.getSpeech(allWords, True)
 
     try:
-        for i in range(0,1): # every round do
-            say("this is round " + str(i))
+
+        for i in range(1,2): # every round do
+            say("This is round " + str(i))
             say("Pick a ball")
             ballColourDecided = False
-            ballColour = ""
+            ballColour = "blue"
 
             # decide on the ballcolour to find!
             while not ballColourDecided:
-                if Speecher.recognizedWord in ballColours: #default is False
+                if Speecher.recognizedWord in ballColours:
                     ballColour = Speecher.recognizedWord
 
                     Speecher.recognizedWord = False
@@ -406,20 +446,32 @@ def runLittleSpy(ballLocation, ballLocated, wonGame):
 
             # look for the fucking ball, boyeah
             ballDetectionProcess = multiprocessing.Process(name="ball-detection-proc", target=detectBallProcess,
-                                                           args=(ballLocation, ballLocated, ballColour,))
+                                                           args=(ballLocation, ballLocated, ballColour,searchForBalls,))
             ballDetectionProcess.start()
 
             Speecher.recognizedWord = False
             correct = False # start with False
             while not correct:
-                # TODO this is a thread started in a thread, is that okay?? needs checking
+                searchForBalls.value = True
+                tried = 0
                 while not ballLocated.value:
                     # TODO while you haven't found the ball, look and turn around and check for balls
-                    sleep(0.1)
-                print "after ballLocated"
+                    if tried % 5 is 0:
+                        look("left")
+                    if tried % 5 is 1:
+                        look("up")
+                    if tried % 5 is 2:
+                        look("right")
+                        look("right")
+                    if tried % 5 is 3:
+                        look("down")
+                    if tried % 5 is 4:
+                        look("left")
+                    tried += 1
+                    sleep(1)
+                searchForBalls.value = False
 
                 say("Is it that ball?")
-                # TODO also point at the ball?
 
                 # listen for the answer and classify it as right or wrong
                 while True:
@@ -433,12 +485,16 @@ def runLittleSpy(ballLocation, ballLocated, wonGame):
                         break
                     sleep(0.5)
 
+                sleep(3)
+                correct = True
+
                 if correct:
                     say("yay!")
                     say("This is the end of the first round.")
                     break
                 else:
                     say("Okay, I will continue my search for a " + ballColour + " ball.")
+                    turn(45, "right")
             ballDetectionProcess.terminate()
     except Exception, e:
         # print "runLittleSpy - Unexpected error:", sys.exc_info()[0] , ": ", str(e)
@@ -455,6 +511,7 @@ def runLittleSpy(ballLocation, ballLocated, wonGame):
         print name, " Exiting"
         try:
             Speecher.stop()
+            pass
         except:
             pass
 
@@ -462,15 +519,13 @@ def runLittleSpy(ballLocation, ballLocated, wonGame):
 # Main functions
 ################################################################################
 def setup():
-    global marcoPolo, littleSpy, ballLocation
+    global marcoPolo, littleSpy
     # add thread variables here which you also need in main()
-    global mainQueue, azimuth, wonGame, ballLocated
-    # NOTE: answer is that they are created in setup(), and you may also want to call them in main(), which is a different function in the
-    # same thread. So you can't access them from there if they are not global. Was mainly for debugging, don't think that it is needed right now anymore
+    global mainQueue, azimuth, wonGame, ballLocated, ballLocation, searchForBalls
 
     # Set robot to default posture
     setEyeLeds("none", 0.6)
-    # postureProxy.goToPosture("Stand", 0.6667)
+    postureProxy.goToPosture("Stand", 0.6667)
 
     say("Initializing threads")
 
@@ -481,10 +536,11 @@ def setup():
     mainQueue = multiprocessing.Queue()
     azimuth = manager.Value('i', 0)
     wonGame = manager.Value('i', False)
+    searchForBalls = manager.Value('i', False)
 
     # extra threads
     marcoPolo = multiprocessing.Process(name="MarcoPolo-proc", target=runMarcoPolo, args=(mainQueue,azimuth, wonGame,))
-    littleSpy = multiprocessing.Process(name="littleSpy-proc", target=runLittleSpy, args=(ballLocation, ballLocated, wonGame,))
+    littleSpy = multiprocessing.Process(name="littleSpy-proc", target=runLittleSpy, args=(ballLocation, ballLocated, wonGame,searchForBalls))
 
 
 def main():
@@ -505,7 +561,15 @@ def main():
         start = time.time()
         end = time.time()
 
+        toldRules = False
+
         while end - start < duration:
+
+            if not toldRules:
+                say("If you want to play Marco Polo, touch my head!")
+                say("If you want to play I spy with my little eye, touch my hand!")
+                toldRules = True
+
             # make sure wonGame is always False when starting a new round!
             wonGame.value = False
             if ReactToTouch.parts != []:
@@ -533,7 +597,9 @@ def main():
                         marcoPolo.join()
                         say('that was fun!')
                         ReactToTouch.subscribeTouch()
+                        toldRules = False
                         break # don't check other the other parts in the list if you have already found a part
+
                     elif "Hand" in part:
                         ReactToTouch.unsubscribeTouch()
                         # make a process for I Spy with my little Eye
@@ -547,6 +613,7 @@ def main():
                         littleSpy.join()
 
                         ReactToTouch.subscribeTouch()
+                        toldRules = False
                         break # don't check other parts if you have already found a part
 
             # update time
@@ -566,7 +633,7 @@ def main():
         say("I am now shutting down.")
         sleep(1.0)
         # rest
-        # postureProxy.goToPosture("Crouch", 0.6667)
+        postureProxy.goToPosture("Crouch", 0.6667)
         motionProxy.rest()
         pythonBroker.shutdown()
         # stop threads
