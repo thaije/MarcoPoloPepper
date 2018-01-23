@@ -40,7 +40,6 @@ am.setBackgroundStrategy("none")
 
 # multithread variables
 azimuth = False
-exitProcess = False
 
 # threads
 marcoPoloProcess = False
@@ -152,9 +151,8 @@ def detectBallProcess(ballLocation, ballLocated, ballColour):
 ################################################################################
 # Marco Polo
 ################################################################################
-def runMarcoPolo(queue, azimuth, exitProcess, wonGame):
+def runMarcoPolo(queue, azimuth, wonGame):
     global SoundLocalization, Speecher
-    # pythonBroker = ALBroker("pythonBroker","0.0.0.0", 9600, ip, port)
     name = multiprocessing.current_process().name
     print name, " Starting"
 
@@ -250,7 +248,6 @@ def runMarcoPolo(queue, azimuth, exitProcess, wonGame):
     finally:
         print name, " Exiting"
         Speecher.stop()
-        pythonBroker.shutdown()
 
 
 
@@ -439,21 +436,15 @@ def runLittleSpy(ballLocation, ballLocated, wonGame):
 # Main functions
 ################################################################################
 def setup():
-    global pythonBroker
-    # add threads here
     global marcoPolo, littleSpy
     # add thread variables here which you also need in main()
-    global mainQueue, azimuth, exitProcess, wonGame
-    # TODO can you explain why these variables are both global and passed to the processes. shouldn't one of these be enough?
+    global mainQueue, azimuth, wonGame
     # NOTE: answer is that they are created in setup(), and you may also want to call them in main(), which is a different function in the
     # same thread. So you can't access them from there if they are not global. Was mainly for debugging, don't think that it is needed right now anymore
 
     # Set robot to default posture
     setEyeLeds("none", 0.6)
     postureProxy.goToPosture("Stand", 0.6667)
-
-    # TODO we have the pythonbroker now at three locations. make it generally defined in top?
-    pythonBroker = ALBroker("pythonBroker","0.0.0.0", 9600, ip, port)
 
     say("Initializing threads")
 
@@ -463,20 +454,19 @@ def setup():
     ballLocated = manager.Value('i', False)
     mainQueue = multiprocessing.Queue()
     azimuth = manager.Value('i', 0)
-    exitProcess = manager.Value('i', 0)
     wonGame = manager.Value('i', False)
 
     # extra threads
-    marcoPolo = multiprocessing.Process(name="MarcoPolo-proc", target=runMarcoPolo, args=(mainQueue,azimuth, exitProcess, wonGame,))
+    marcoPolo = multiprocessing.Process(name="MarcoPolo-proc", target=runMarcoPolo, args=(mainQueue,azimuth, wonGame,))
     littleSpy = multiprocessing.Process(name="littleSpy-proc", target=runLittleSpy, args=(ballLocation, ballLocated, wonGame,))
 
 
 def main():
-    global pythonBroker, ReactToTouch
+    global ReactToTouch
     # add threads here
     global marcoPolo, littleSpy
     # add thread variables here
-    global mainQueue, azimuth, exitProcess, wonGame
+    global mainQueue, azimuth, wonGame
 
     try:
         # start threads
@@ -544,13 +534,12 @@ def main():
         print "Unexpected error:", sys.exc_info()[0] , ": ", str(e)
     finally:
         say("I am now shutting down.")
-        # exitProcess.value = True
         sleep(1.0)
         # rest
         postureProxy.goToPosture("Crouch", 0.6667)
         motionProxy.rest()
+        pythonBroker.shutdown()
         # stop threads
-        #exampleProcess.terminate()
         sys.exit(0)
 
 
