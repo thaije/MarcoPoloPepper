@@ -9,12 +9,12 @@ from naoqi import ALModule
 from naoqi import ALProxy
 from naoqi import ALBroker
 
-image = cv2.imread("RedBall.jpg")
+image = cv2.imread("YellowBall.jpg")
 img = cv2.imread("wafeltosti.jpg")
 middle_width = 160
 middle_height = 120
 
-ballColour = "red"
+ballColour = "yellow"
 
 # ballColours = ["pink" "red" "blue" "yellow" "orange" "green" "white"]
 if ballColour == "pink": # TODO check colour ranges!!
@@ -27,8 +27,8 @@ elif ballColour == "yellow":
     lower_colour = np.array([20, 100, 100], dtype=np.uint8)
     upper_colour = np.array([60, 255, 255], dtype=np.uint8)
 elif ballColour == "red":
-    lower_colour = np.array([100, 0, 200], dtype=np.uint8)
-    upper_colour = np.array([180, 100, 255], dtype=np.uint8)
+    lower_colour = np.array([100, 100, 0], dtype=np.uint8)
+    upper_colour = np.array([255, 255, 20], dtype=np.uint8)
 elif ballColour == "blue":
     lower_colour = np.array([70, 50, 50], dtype=np.uint8)
     upper_colour = np.array([170, 255, 255], dtype=np.uint8)
@@ -46,7 +46,6 @@ hsvImage = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 # create threshold mask
 color_mask = cv2.inRange(hsvImage, lower_colour, upper_colour)
 cv2.imshow('image', color_mask)
-cv2.waitKey()
 
 kernel = np.ones((9,9), np.uint8)
 # remove small objects
