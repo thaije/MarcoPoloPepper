@@ -213,7 +213,7 @@ def runMarcoPolo(queue, azimuth, wonGame):
         nextAzimuth = 0
         sleep(2.0)
 
-        # countDown()
+        countDown()
 
         while True:
             # print "recognizedWord:", Speecher.recognizedWord
@@ -260,16 +260,12 @@ def runMarcoPolo(queue, azimuth, wonGame):
 
             # check how close we are to the other person
             print "Energy is:", SoundLocalization.energy
-            if SoundLocalization.energy > 0.18:
+            if SoundLocalization.energy > 0.20:
                 say("You sound really close, I think I found you!")
                 wonGame.value = True
                 break
                 # TODO: Do grabbing motion forwards / face recognition to check if won?
                 # check to see if we can find a face closeby, if true we won
-                # if faceTracking returns true:
-                #     queue.put(True)
-                #     break
-
 
             # Move towards the person and avoid objects along the way
             if( navigationProxy.navigateTo(1.5, 0) ):
@@ -533,7 +529,7 @@ def setup():
     setEyeLeds("none", 0.6)
     postureProxy.goToPosture("Stand", 0.6667)
 
-    say("Initializing threads")
+    print "Initializing threads"
 
     # multithread variables
     manager = multiprocessing.Manager()
