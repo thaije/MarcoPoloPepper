@@ -42,30 +42,38 @@ def findBall(image, ballColour): # default ballcolour to recognize is blue
     # upper_blue = np.array([170, 255, 255], dtype=np.uint8)
 
     # ballColours = ["pink" "red" "blue" "yellow" "orange" "green" "white"]
-    if ballColour == "pink": # TODO check colour ranges!!
-        lower_colour = np.array([100,0,100], dtype=np.uint8)
-        upper_colour = np.array([255, 150, 255], dtype=np.uint8)
+    if ballColour == "pink":
+        lower_colour = np.array([130, 100, 100], dtype=np.uint8)
+        upper_colour = np.array([180, 255, 255], dtype=np.uint8)
     elif ballColour == "green":
-        lower_colour = np.array([0, 252, 127], dtype=np.uint8)
-        upper_colour = np.array([47, 255, 173], dtype=np.uint8)
+        lower_colour = np.array([29, 86, 6], dtype=np.uint8)
+        upper_colour = np.array([64, 255, 255], dtype=np.uint8)
     elif ballColour == "yellow":
-        lower_colour = np.array([0, 204, 204], dtype=np.uint8)
-        upper_colour = np.array([204, 255, 255], dtype=np.uint8)
+        lower_colour = np.array([20, 100, 100], dtype=np.uint8)
+        upper_colour = np.array([60, 255, 255], dtype=np.uint8)
     elif ballColour == "red":
-        lower_colour = np.array([0, 0, 255], dtype=np.uint8)
-        upper_colour = np.array([122, 160, 255], dtype=np.uint8)
+        lower_colour = np.array([0, 100, 100], dtype=np.uint8)
+        upper_colour = np.array([10, 255, 255], dtype=np.uint8)
+        # red has an extra colur mask
+        lower_colour2 = np.array([160, 100, 100], dtype=np.uint8)
+        upper_colour2 = np.array([179, 255, 255], dtype=np.uint8)
     elif ballColour == "blue":
         lower_colour = np.array([70, 50, 50], dtype=np.uint8)
         upper_colour = np.array([170, 255, 255], dtype=np.uint8)
     else: # default is blue balls
-        lower_colour = np.array([110, 50, 50], dtype=np.uint8)
-        upper_colour = np.array([130, 255, 255], dtype=np.uint8)
+        lower_colour = np.array([70, 50, 50], dtype=np.uint8)
+        upper_colour = np.array([170, 255, 255], dtype=np.uint8)
 
-    print "ballColour in camera:", ballColour
 
     hsvImage = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-
     color_mask = cv2.inRange(hsvImage, lower_colour, upper_colour)
+
+    # if the colour is red, we have two colour ranges so create
+    # an extra colour mask, and blend them together
+    if ballColour == "red":
+        color_mask2 = cv2.inRange(hsvImage, lower_colour2, upper_colour2)
+        color_mask = cv2.addWeighted(color_mask, 1.0, color_mask2, 1.0, 0)
+        color_mask = cv2.GaussianBlur(color_mask, (5,5), 0)
 
     #colour_image = cv2.bitwise_and(image, image, mask=color_mask)
 

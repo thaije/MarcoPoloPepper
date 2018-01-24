@@ -4,22 +4,23 @@ import numpy as np
 import naoqi
 import time
 import cv2
+import sys
 
 from naoqi import ALModule
 from naoqi import ALProxy
 from naoqi import ALBroker
 
-image = cv2.imread("YellowBall.jpg")
+image = cv2.imread("PinkBall.jpg")
 img = cv2.imread("wafeltosti.jpg")
 middle_width = 160
 middle_height = 120
 
-ballColour = "yellow"
+ballColour = "pink"
 
 # ballColours = ["pink" "red" "blue" "yellow" "orange" "green" "white"]
-if ballColour == "pink": # TODO check colour ranges!!
-    lower_colour = np.array([200,10,60], dtype=np.uint8)
-    upper_colour = np.array([255, 115, 170], dtype=np.uint8)
+if ballColour == "pink": 
+    lower_colour = np.array([130, 100, 100], dtype=np.uint8)
+    upper_colour = np.array([180, 255, 255], dtype=np.uint8)
 elif ballColour == "green":
     lower_colour = np.array([29, 86, 6], dtype=np.uint8)
     upper_colour = np.array([64, 255, 255], dtype=np.uint8)
@@ -27,8 +28,11 @@ elif ballColour == "yellow":
     lower_colour = np.array([20, 100, 100], dtype=np.uint8)
     upper_colour = np.array([60, 255, 255], dtype=np.uint8)
 elif ballColour == "red":
-    lower_colour = np.array([100, 100, 0], dtype=np.uint8)
-    upper_colour = np.array([255, 255, 20], dtype=np.uint8)
+    lower_colour = np.array([0, 100, 100], dtype=np.uint8)
+    upper_colour = np.array([10, 255, 255], dtype=np.uint8)
+    # red has an extra colur mask
+    lower_colour2 = np.array([160, 100, 100], dtype=np.uint8)
+    upper_colour2 = np.array([179, 255, 255], dtype=np.uint8)
 elif ballColour == "blue":
     lower_colour = np.array([70, 50, 50], dtype=np.uint8)
     upper_colour = np.array([170, 255, 255], dtype=np.uint8)
@@ -44,8 +48,20 @@ upper_blue = np.array([170, 255, 255], dtype=np.uint8)
 # convert to hsv color space
 hsvImage = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 # create threshold mask
+
+# create a colour mask
 color_mask = cv2.inRange(hsvImage, lower_colour, upper_colour)
-cv2.imshow('image', color_mask)
+
+# if the colour is red, we have two colour ranges so create
+# an extra colour mask, and blend them together
+if ballColour == "red":
+    color_mask2 = cv2.inRange(hsvImage, lower_colour2, upper_colour2)
+    color_mask = cv2.addWeighted(color_mask, 1.0, color_mask2, 1.0, 0)
+    color_mask = cv2.GaussianBlur(color_mask, (5,5), 0)
+
+cv2.imshow('color_mask', color_mask)
+
+# cv2.waitKey()
 
 kernel = np.ones((9,9), np.uint8)
 # remove small objects
@@ -60,6 +76,8 @@ blue_image = cv2.bitwise_and(image, image, mask = smoothed_mask)
 gray_image = blue_image[:,:,2]
 
 cv2.imshow("gray", gray_image)
+
+# cv2.waitKey()
 
 # use hough transform to find circular objects in the image
 circles = cv2.HoughCircles(
