@@ -240,7 +240,7 @@ def runMarcoPolo(queue, azimuth, wonGame):
             # Set the eyes LED colours according to his pissed off factor, and
             # cheat if Pepper is tired of your games
             if angerManagment(pissedOffFactor):
-                tts.say("I can't find you. I quit")
+                say("I can't find you. I quit")
                 wonGame.value = False
                 print "runMarcoPolo - Pepper is pissed off and will cheat"
                 # TODO: cheat
@@ -260,7 +260,7 @@ def runMarcoPolo(queue, azimuth, wonGame):
             # check how close we are to the other person
             print "Energy is:", SoundLocalization.energy
             if SoundLocalization.energy > 0.18:
-                tts.say("You sound really close, I think I found you!")
+                say("You sound really close, I think I found you!")
                 wonGame.value = True
                 break
                 # TODO: Do grabbing motion forwards / face recognition to check if won?
@@ -287,6 +287,7 @@ def runMarcoPolo(queue, azimuth, wonGame):
         print "Error"
         pass
     finally:
+        queue.put(True)
         print name, " Exiting"
         Speecher.stop()
 
@@ -298,7 +299,7 @@ def waitForPolo():
     waitForPolo = 0
     heardPolo = False
 
-    tts.say("Marco?")
+    say("Marco?")
     sleep(1.5)
     waitForPolo += 0.5
     Speecher.recognizedWord = False
@@ -594,6 +595,7 @@ def main():
                             else:
                                 if wonMP: # if you've won marcopolo, finish this part
                                     break
+                        print "Waiting for Marco Polo thread to shut down"
                         marcoPolo.join()
                         say('that was fun!')
                         ReactToTouch.subscribeTouch()
