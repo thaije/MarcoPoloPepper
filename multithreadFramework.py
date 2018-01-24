@@ -490,8 +490,7 @@ def runLittleSpy(ballLocation, ballLocated, wonGame, searchForBalls):
                     sleep(0.5)
 
                 if correct:
-                    say("yay!")
-                    say("This is the end of the first round.")
+                    say("yay! I found it! I am such a good spy!github")
                     searchForBalls.value = False
                     break
                 else:
