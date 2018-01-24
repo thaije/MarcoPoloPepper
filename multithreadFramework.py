@@ -12,7 +12,7 @@ from postures import *
 # general variables
 ip = "192.168.1.115"
 port = 9559
-duration = 20
+duration = 100
 time_out = 0.2
 pepperIritationThreshold = 4
 pepperPissedOffThreshold = 6
@@ -55,7 +55,7 @@ def checkProxyDuplicates(name):
         pass
 
 def say(str):
-    # tts.say(str)
+    tts.say(str)
     print('saying: ',str)
 
 def rotateToVoice(azimu):
@@ -112,21 +112,23 @@ def turn(theta, direction):
     motionProxy.stopMove()
 
 # look a relative amount to the current head posture in a certain direction
-def look(direction):
+def look(direction, isAbsolute, stepsize):
     joints = ["HeadYaw", "HeadPitch"]
-    isAbsolute = False
-    times = [[0.3], [0.3]] #time in seconds
+    times = [[0.6], [0.6]] #time in seconds
+    updown = stepsize / 2
 
     # yaw = 0 # left (2) right (-2)
     # pitch = 0 # up(-0.6) down (0.5)
     if direction is "right":
-        angles = [[-0.3], [0]]
+        angles = [[-stepsize], [0]]
     elif direction is "left":
-        angles = [[0.3], [0]]
+        angles = [[stepsize], [0]]
     elif direction is "up":
-        angles = [[0], [-0.2]]
+        angles = [[0], [-updown]]
     elif direction is "down":
-        angles = [[0], [0.2]]
+        angles = [[0], [updown]]
+    elif direction is "center":
+        angles = [[0], [0]]
     else:
         angles = [[0], [0]]
 
@@ -141,19 +143,18 @@ def centerOnBall(ballCoords, ballLocation):
     # -1=not found, 0=centered, 1=top, 2=right, 3=bottom, 4=left
     if x > (resolutionX/2 + ballThreshold):
         ballLocation.value = "right"
-        look("right")
+        look("right", False, 0.3)
     elif x < (resolutionX/2 - ballThreshold):
         ballLocation.value = "left"
-        look("left")
+        look("left", False, 0.3)
     elif y > (resolutionY/2 + ballThreshold):
         ballLocation.value = "down"
-        look("down")
+        look("down", False, 0.3)
     elif y < (resolutionY/2 - ballThreshold):
         ballLocation.value = "up"
-        look("up")
+        look("up", False, 0.3)
     else:
         ballLocation.value = "centered"
-        #look("up")
 
 def detectBallProcess(ballLocation, ballLocated, ballColour, searchForBalls):
     name = multiprocessing.current_process().name
@@ -407,14 +408,12 @@ def runLittleSpy(ballLocation, ballLocated, wonGame, searchForBalls):
     name = multiprocessing.current_process().name
 
     # give instructions to the game
-    say("We are playing I spy with my little eye")
     say("These are the rules")
     say("You will place several balls in the room")
-    say("You tell me the colour of the ball you picked")
-    say("Then I will try to find the ball you picked")
+    say("You tell me the colour of the ball you chose")
+    say("Then I will try to find that ball")
     say("When I pick the wrong ball, you say WRONG!")
     say("When I have found the right ball, you say CORRECT!")
-    say("We will play this game for one round.")
     say("I hope you are ready!")
     sleep(1)
 
@@ -423,15 +422,15 @@ def runLittleSpy(ballLocation, ballLocated, wonGame, searchForBalls):
     otherWords = ["yes", "no", "correct", "wrong"]
     allWords = ballColours + otherWords
     Speecher = SpeechRecognition("Speecher", memory)
+
+    say("Tell me the colour of the ball.")
     Speecher.getSpeech(allWords, True)
 
     try:
 
         for i in range(1,2): # every round do
-            say("This is round " + str(i))
-            say("Pick a ball")
             ballColourDecided = False
-            ballColour = "blue"
+            sleep(0.5)
 
             # decide on the ballcolour to find!
             while not ballColourDecided:
@@ -449,28 +448,36 @@ def runLittleSpy(ballLocation, ballLocated, wonGame, searchForBalls):
             ballDetectionProcess = multiprocessing.Process(name="ball-detection-proc", target=detectBallProcess,
                                                            args=(ballLocation, ballLocated, ballColour,searchForBalls,))
             ballDetectionProcess.start()
+            searchForBalls.value = True
 
             Speecher.recognizedWord = False
             correct = False # start with False
             while not correct:
-                searchForBalls.value = True
                 tried = 0
+                lookedAround = 0
                 while not ballLocated.value:
-                    # TODO while you haven't found the ball, look and turn around and check for balls
-                    if tried % 5 is 0:
-                        look("left")
+                    if lookedAround is 2:
+                        turn(90, "random")
+                        lookedAround =0
+                    if tried is 0:
+                        look("left", False, 0.55)
+                        look("down", False, 0.55)
+                    if tried > 0 and tried % 5 is 0:
+                        look("left", False, 0.55)
                     if tried % 5 is 1:
-                        look("up")
+                        look("up", False, 0.55)
+                        look("up", False, 0.55)
                     if tried % 5 is 2:
-                        look("right")
-                        look("right")
+                        look("right", False, 0.55)
+                        look("right", False, 0.55)
                     if tried % 5 is 3:
-                        look("down")
+                        look("down", False, 0.55)
+                        look("down", False, 0.55)
                     if tried % 5 is 4:
-                        look("left")
+                        look("left", False, 0.55)
+                        lookedAround += 1
                     tried += 1
                     sleep(1)
-                searchForBalls.value = False
 
                 say("Is it that ball?")
 
@@ -486,19 +493,17 @@ def runLittleSpy(ballLocation, ballLocated, wonGame, searchForBalls):
                         break
                     sleep(0.5)
 
-                sleep(3)
-                correct = True
-
                 if correct:
                     say("yay!")
                     say("This is the end of the first round.")
+                    searchForBalls.value = False
                     break
                 else:
                     say("Okay, I will continue my search for a " + ballColour + " ball.")
-                    turn(45, "right")
+                    turn(90, "random")
+                look("center", True, 0.5)
             ballDetectionProcess.terminate()
     except Exception, e:
-        # print "runLittleSpy - Unexpected error:", sys.exc_info()[0] , ": ", str(e)
         exc_type, exc_obj, exc_tb = sys.exc_info()
         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
         print "runLittleSpy - Unexpected error:", sys.exc_info()[0] , ": ", str(e)
@@ -563,12 +568,17 @@ def main():
         end = time.time()
 
         toldRules = False
+        exitGame = False
+        playedISpy = False
+        playedMarcoPolo = False
 
         while end - start < duration:
-
+            if exitGame:
+                break
             if not toldRules:
-                say("If you want to play Marco Polo, touch my head!")
-                say("If you want to play I spy with my little eye, touch my hand!")
+                say("If you want to play Marco Polo, touch the top of my head!")
+                say("If you want to play I spy with my little eye, touch my left hand!")
+                say("If you do not want to play, touch my right hand!")
                 toldRules = True
 
             # make sure wonGame is always False when starting a new round!
@@ -579,43 +589,57 @@ def main():
                 ReactToTouch.parts = [] # make the list empty again
                 for part in parts:
                     print 'current part is ', part
-                    # touch when this is not an aspect of importance
+                    if "RHand" in part:
+                        say("You chose to quit playing.")
+                        exitGame = True
+                        break
                     if "Head" in part:
                         ReactToTouch.unsubscribeTouch()
-                        print 'time for marco polo'
-                        # make a process for Marco Polo
-                        say("lets play a game of Marco polo!")
-                        marcoPolo.start()
 
-                        while True:
-                            try:
-                                wonMP = mainQueue.get(True, time_out)
-                            except Queue.Empty:
-                                pass # do nothing
-                            else:
-                                if wonMP: # if you've won marcopolo, finish this part
-                                    break
-                        print "Waiting for Marco Polo thread to shut down"
-                        marcoPolo.join()
-                        say('that was fun!')
+                        if not playedMarcoPolo:
+                            print 'time for marco polo'
+                            # make a process for Marco Polo
+                            say("lets play a game of Marco polo!")
+                            marcoPolo.start()
+
+                            while True:
+                                try:
+                                    wonMP = mainQueue.get(True, time_out)
+                                except Queue.Empty:
+                                    pass # do nothing
+                                else:
+                                    if wonMP: # if you've won marcopolo, finish this part
+                                        break
+                            print "Waiting for Marco Polo thread to shut down"
+                            marcoPolo.join()
+                            say('that was fun!')
+                            toldRules = False
+                            playedMarcoPolo = True
+                        else:
+                            say("you have already played this game!")
+                            say("please choose something else")
                         ReactToTouch.subscribeTouch()
-                        toldRules = False
                         break # don't check other the other parts in the list if you have already found a part
 
                     elif "Hand" in part:
                         ReactToTouch.unsubscribeTouch()
                         # make a process for I Spy with my little Eye
-                        say("you choose to play I spy with my little eye")
-                        say("lets have some fun!")
+                        if not playedISpy:
+                            say("you choose to play I spy with my little eye")
+                            say("lets have some fun!")
 
-                        littleSpy.start()
+                            littleSpy.start()
 
-                        while not wonGame.value:
-                            sleep(0.5)
-                        littleSpy.join()
+                            while not wonGame.value:
+                                sleep(0.5)
+                            littleSpy.join()
+                            toldRules = False
+                            playedISpy = True
+                        else:
+                            say("you have already played this game!")
+                            say("please choose something else")
 
                         ReactToTouch.subscribeTouch()
-                        toldRules = False
                         break # don't check other parts if you have already found a part
 
             # update time
