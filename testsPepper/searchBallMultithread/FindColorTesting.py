@@ -9,26 +9,26 @@ from naoqi import ALModule
 from naoqi import ALProxy
 from naoqi import ALBroker
 
-image = cv2.imread("PinkBall.jpg")
+image = cv2.imread("YellowBall.jpg")
 img = cv2.imread("wafeltosti.jpg")
 middle_width = 160
 middle_height = 120
 
-ballColour = "pink"
+ballColour = "yellow"
 
 # ballColours = ["pink" "red" "blue" "yellow" "orange" "green" "white"]
 if ballColour == "pink": # TODO check colour ranges!!
     lower_colour = np.array([200,10,60], dtype=np.uint8)
     upper_colour = np.array([255, 115, 170], dtype=np.uint8)
 elif ballColour == "green":
-    lower_colour = np.array([0, 252, 127], dtype=np.uint8)
-    upper_colour = np.array([47, 255, 173], dtype=np.uint8)
+    lower_colour = np.array([29, 86, 6], dtype=np.uint8)
+    upper_colour = np.array([64, 255, 255], dtype=np.uint8)
 elif ballColour == "yellow":
     lower_colour = np.array([20, 100, 100], dtype=np.uint8)
     upper_colour = np.array([60, 255, 255], dtype=np.uint8)
 elif ballColour == "red":
-    lower_colour = np.array([0, 100, 100], dtype=np.uint8)
-    upper_colour = np.array([20, 255, 255], dtype=np.uint8)
+    lower_colour = np.array([100, 100, 0], dtype=np.uint8)
+    upper_colour = np.array([255, 255, 20], dtype=np.uint8)
 elif ballColour == "blue":
     lower_colour = np.array([70, 50, 50], dtype=np.uint8)
     upper_colour = np.array([170, 255, 255], dtype=np.uint8)
@@ -46,49 +46,49 @@ hsvImage = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 # create threshold mask
 color_mask = cv2.inRange(hsvImage, lower_colour, upper_colour)
 cv2.imshow('image', color_mask)
-#
-# kernel = np.ones((9,9), np.uint8)
-# # remove small objects
-# opening = cv2.morphologyEx(color_mask, cv2.MORPH_OPEN, kernel)
-# # close small openings
-# closing = cv2.morphologyEx(opening, cv2.MORPH_CLOSE, kernel)
-# # apply blur to smooth edges
-# smoothed_mask = cv2.GaussianBlur(closing, (9,9), 0)
-# # # apply mask on image
-# blue_image = cv2.bitwise_and(image, image, mask = smoothed_mask)
-# # get grayscale
-# gray_image = blue_image[:,:,2]
-#
-# cv2.imshow("gray", gray_image)
-#
-# # use hough transform to find circular objects in the image
-# circles = cv2.HoughCircles(
-# gray_image,
-# cv2.HOUGH_GRADIENT,
-# 1,
-# 5,
-# param1=200,
-# param2=20,
-# minRadius=5,
-# maxRadius=100
-# )
-# # get first circle
-# circle = circles[0,:][0]
-#
-# # draw detected circle on original image
-# cv2.circle(image, (circle[0], circle[1]), circle[2], (0,255,0), 2)
-# cv2.circle(image, (middle_width, middle_height), 15, (0,0,255), 2)
-#
-# # hoeveel horizontaal anders kijken:
-# hor = (circle[0] - middle_width) / middle_width
-# ver = (circle[1] - middle_height) / middle_height
-#
-# print(hor)
-# print(ver)
-#
-# cv2.imshow("Result", image)
-#
-# #######################################################################################################################
+
+kernel = np.ones((9,9), np.uint8)
+# remove small objects
+opening = cv2.morphologyEx(color_mask, cv2.MORPH_OPEN, kernel)
+# close small openings
+closing = cv2.morphologyEx(opening, cv2.MORPH_CLOSE, kernel)
+# apply blur to smooth edges
+smoothed_mask = cv2.GaussianBlur(closing, (9,9), 0)
+# # apply mask on image
+blue_image = cv2.bitwise_and(image, image, mask = smoothed_mask)
+# get grayscale
+gray_image = blue_image[:,:,2]
+
+cv2.imshow("gray", gray_image)
+
+# use hough transform to find circular objects in the image
+circles = cv2.HoughCircles(
+gray_image,
+cv2.HOUGH_GRADIENT,
+1,
+5,
+param1=200,
+param2=20,
+minRadius=5,
+maxRadius=100
+)
+# get first circle
+circle = circles[0,:][0]
+
+# draw detected circle on original image
+cv2.circle(image, (circle[0], circle[1]), circle[2], (0,255,0), 2)
+cv2.circle(image, (middle_width, middle_height), 15, (0,0,255), 2)
+
+# hoeveel horizontaal anders kijken:
+hor = (circle[0] - middle_width) / middle_width
+ver = (circle[1] - middle_height) / middle_height
+
+print(hor)
+print(ver)
+
+cv2.imshow("Result", image)
+
+#######################################################################################################################
 #
 # hsvImg = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 # smooth_mask = cv2.GaussianBlur(hsvImg, (9,9), 0)
