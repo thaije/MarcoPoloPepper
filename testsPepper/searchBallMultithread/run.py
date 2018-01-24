@@ -26,7 +26,7 @@ ip = "192.168.1.115"
 port = 9559
 
 # general variables
-duration = 200
+duration = 30
 ballDetected = False
 
 # camera variables
@@ -264,10 +264,12 @@ def main():
                 lastBallLocation = False
                 # tts.say("I lost the ball")
                 print("lost ball")
+                changeLeds(0.8, "RED")
             elif ballLocated.value and lastBallLocation != ballLocation.value:
                 lastBallLocation = ballLocation.value
                 print "I see the ball ", ballLocation.value
                 #tts.say("I see the ball " + ballLocation.value)
+                changeLeds(0.8, "GREEN")
 
             # # determine eye led colour
             # if not ballLocated.value:
@@ -284,7 +286,7 @@ def main():
             sleep(0.2)
             end = time()
 
-        say("This was my presentation")
+        print("This was my presentation")
 
     except KeyboardInterrupt:
         print "Interrupted by user, shutting down"
@@ -292,8 +294,8 @@ def main():
         print "Unexpected error:", sys.exc_info()[0] , ": ", str(e)
     finally:
         print "Shutting down"
-        #postureProxy.goToPosture("Crouch", 0.6667)
-        #motionProxy.rest()
+        postureProxy.goToPosture("Crouch", 0.6667)
+        motionProxy.rest()
         videoProxy.unsubscribe(cam)
         ballDetectionProcess.terminate()
         #volLevelProcess.terminate()

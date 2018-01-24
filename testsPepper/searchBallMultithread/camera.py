@@ -44,17 +44,17 @@ def findBall(image): # default ballcolour to recognize is blue
 
     # ballColours = ["pink" "red" "blue" "yellow" "orange" "green" "white"]
     if ballColour == "pink": # TODO check colour ranges!!
-        lower_colour = np.array([100,20,100], dtype=np.uint8)
-        upper_colour = np.array([255, 180, 255], dtype=np.uint8)
+        lower_colour = np.array([200,10,60], dtype=np.uint8)
+        upper_colour = np.array([255, 115, 170], dtype=np.uint8)
     elif ballColour == "green":
         lower_colour = np.array([0, 252, 127], dtype=np.uint8)
         upper_colour = np.array([47, 255, 173], dtype=np.uint8)
     elif ballColour == "yellow":
-        lower_colour = np.array([0, 204, 204], dtype=np.uint8)
-        upper_colour = np.array([204, 255, 255], dtype=np.uint8)
+        lower_colour = np.array([20, 100, 100], dtype=np.uint8)
+        upper_colour = np.array([60, 255, 255], dtype=np.uint8)
     elif ballColour == "red":
-        lower_colour = np.array([0, 0, 255], dtype=np.uint8)
-        upper_colour = np.array([122, 160, 255], dtype=np.uint8)
+        lower_colour = np.array([0, 100, 100], dtype=np.uint8)
+        upper_colour = np.array([20, 255, 255], dtype=np.uint8)
     elif ballColour == "blue":
         lower_colour = np.array([70, 50, 50], dtype=np.uint8)
         upper_colour = np.array([170, 255, 255], dtype=np.uint8)
