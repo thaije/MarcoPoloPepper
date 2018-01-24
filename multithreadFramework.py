@@ -212,7 +212,7 @@ def runMarcoPolo(queue, azimuth, wonGame):
         nextAzimuth = 0
         sleep(2.0)
 
-        # countDown()
+        countDown()
 
         while True:
             # print "recognizedWord:", Speecher.recognizedWord
@@ -265,10 +265,6 @@ def runMarcoPolo(queue, azimuth, wonGame):
                 break
                 # TODO: Do grabbing motion forwards / face recognition to check if won?
                 # check to see if we can find a face closeby, if true we won
-                # if faceTracking returns true:
-                #     queue.put(True)
-                #     break
-
 
             # Move towards the person and avoid objects along the way
             if( navigationProxy.navigateTo(1.5, 0) ):
@@ -528,7 +524,7 @@ def setup():
     setEyeLeds("none", 0.6)
     postureProxy.goToPosture("Stand", 0.6667)
 
-    say("Initializing threads")
+    print "Initializing threads"
 
     # multithread variables
     manager = multiprocessing.Manager()
@@ -605,7 +601,7 @@ def main():
                     elif "Hand" in part:
                         ReactToTouch.unsubscribeTouch()
                         # make a process for I Spy with my little Eye
-                        say("you choose to play I spy with my little eye")
+                        say("you chose to play I spy with my little eye")
                         say("lets have some fun!")
 
                         littleSpy.start()
