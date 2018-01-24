@@ -259,7 +259,7 @@ def runMarcoPolo(queue, azimuth, wonGame):
 
             # check how close we are to the other person
             print "Energy is:", SoundLocalization.energy
-            if SoundLocalization.energy > 0.18:
+            if SoundLocalization.energy > 0.20:
                 say("You sound really close, I think I found you!")
                 wonGame.value = True
                 break
