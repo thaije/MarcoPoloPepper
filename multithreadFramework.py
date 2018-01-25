@@ -575,6 +575,11 @@ def main():
         while end - start < duration:
             if exitGame:
                 break
+            if playedISpy and playedMarcoPolo:
+                say("You played all the games!")
+                sleep(1)
+                break
+            
             if not toldRules:
                 say("If you want to play Marco Polo, touch the top of my head!")
                 say("If you want to play I spy with my little eye, touch my left hand!")
