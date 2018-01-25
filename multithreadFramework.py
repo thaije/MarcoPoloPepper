@@ -12,7 +12,7 @@ from postures import *
 # general variables
 ip = "192.168.1.115"
 port = 9559
-duration = 100
+duration = 200
 time_out = 0.2
 pepperIritationThreshold = 4
 pepperPissedOffThreshold = 6
@@ -204,7 +204,12 @@ def runMarcoPolo(queue, azimuth, wonGame):
     say("I call Marco")
     say("And you respond with Polo!")
 
+
+
     try:
+        countDown()
+
+
         SoundLocalization = SoundLocalization("SoundLocalization", memory)
         Speecher = SpeechRecognition("Speecher", memory)
         Speecher.getSpeech(["marco", "polo"], True)
@@ -212,8 +217,6 @@ def runMarcoPolo(queue, azimuth, wonGame):
         pissedOffFactor = 0
         nextAzimuth = 0
         sleep(2.0)
-
-        countDown()
 
         while True:
             # print "recognizedWord:", Speecher.recognizedWord
@@ -566,6 +569,8 @@ def main():
         exitGame = False
         playedISpy = False
         playedMarcoPolo = False
+
+        say("Hey! I am Pepper! I want to play a game with you.")
 
         while end - start < duration:
             if exitGame:
