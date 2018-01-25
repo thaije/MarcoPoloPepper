@@ -263,7 +263,7 @@ def runMarcoPolo(queue, azimuth, wonGame):
 
             # check how close we are to the other person
             print "Energy is:", SoundLocalization.energy
-            if SoundLocalization.energy > 0.20:
+            if SoundLocalization.energy > 0.16:
                 say("You sound really close, I think I found you!")
                 wonGame.value = True
                 break
@@ -271,7 +271,7 @@ def runMarcoPolo(queue, azimuth, wonGame):
                 # check to see if we can find a face closeby, if true we won
 
             # Move towards the person and avoid objects along the way
-            if( navigationProxy.navigateTo(1.5, 0) ):
+            if( navigationProxy.navigateTo(1, 0) ):
                 print "succes"
             else:
                 say("This way is blocked")
