@@ -12,7 +12,7 @@ from postures import *
 # general variables
 ip = "192.168.1.115"
 port = 9559
-duration = 200
+duration = 600
 time_out = 0.2
 pepperIritationThreshold = 4
 pepperPissedOffThreshold = 6
@@ -204,11 +204,8 @@ def runMarcoPolo(queue, azimuth, wonGame):
     say("I call Marco")
     say("And you respond with Polo!")
 
-
-
     try:
         countDown()
-
 
         SoundLocalization = SoundLocalization("SoundLocalization", memory)
         Speecher = SpeechRecognition("Speecher", memory)
@@ -259,7 +256,6 @@ def runMarcoPolo(queue, azimuth, wonGame):
             nextAzimuth = SoundLocalization.azimuth
             print "Azimuth of speaker is:" , nextAzimuth
             rotateToVoice(nextAzimuth)
-
 
             # check how close we are to the other person
             print "Energy is:", SoundLocalization.energy
@@ -337,7 +333,6 @@ def countDown():
 
     # rotate facing the wall
     motionProxy.moveTo(0, 0, math.pi)
-    sleep(2.0)
     coverEyesPosture()
 
     say("Five")
@@ -455,7 +450,7 @@ def runLittleSpy(ballLocation, ballLocated, wonGame, searchForBalls):
                 tried = 0
                 lookedAround = 0
                 while not ballLocated.value:
-                    if lookedAround is 2:
+                    if lookedAround is 1:
                         turn(90, "random")
                         lookedAround =0
                     if tried is 0:
@@ -476,7 +471,7 @@ def runLittleSpy(ballLocation, ballLocated, wonGame, searchForBalls):
                         look("left", False, 0.55)
                         lookedAround += 1
                     tried += 1
-                    sleep(1)
+                    sleep(2)
 
                 say("Is it that ball?")
 
@@ -579,7 +574,7 @@ def main():
                 say("You played all the games!")
                 sleep(1)
                 break
-            
+
             if not toldRules:
                 say("If you want to play Marco Polo, touch the top of my head!")
                 say("If you want to play I spy with my little eye, touch my left hand!")
