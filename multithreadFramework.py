@@ -207,6 +207,7 @@ def runMarcoPolo(queue, azimuth, wonGame):
     try:
         countDown()
 
+
         SoundLocalization = SoundLocalization("SoundLocalization", memory)
         Speecher = SpeechRecognition("Speecher", memory)
         Speecher.getSpeech(["marco", "polo"], True)
